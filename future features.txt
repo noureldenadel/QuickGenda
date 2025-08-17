@@ -1,0 +1,24 @@
+// add styling tab : workflow / panel (need to understand first how it work)
+// it checks the doc existing styles and assign them is assigned to their placeholder automatic
+// and option to add optional style to beaklines and if there is no styles assigned it will generate one for each placeholder with name like the csv placeholder
+// add info tab : move the first alert about csv to tab in the panel with no if sessions user placeholders 
+--------------------------------------------------------------------------------------
+// convert to plugin + some identity
+// update one page only option
+// test preview
+// change dependency to excel also and no BOM
+//inline confg maybe add text frame option columns with line break
+// use windows explorer new ui to choose folder
+// plugin export ready to use excel/csv with all data
+// no depencie that should be session name to run script
+--------------------------------------------------------------------------------------
+sessionTitle
+sessionNo
+sessionTime
+chairpersons
+topicsTable
+topicsTime
+topicsTopic
+topicsSpeaker
+chairAvatar
+chairFlag

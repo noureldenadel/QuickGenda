@@ -17,10 +17,28 @@ v2.0
 //  add info tab : move the first alert about csv to tab in the panel with no if sessions user placeholders add version special thanks
 //  remove grey out in hide save space in srtyles and linebreaks
 //  ui edits: improve workflow progression ui , ux
+//  overview tab fixed ui ux
+// fix spacing / make detected field area smart inc or dec depnding on content
+//  move script info to advance and be writtern after noorr @2025 | v2.0 | 
+//  add fix template analysis and sugguested conf (settings) to take full width
+//  rename layout selection to chairpersons
+//  move check box next to layout
+//  name inline layout congiguratin to inline settings and grid settings
+//  move inline settings and grid settings inside chairpersons
+//  rename layout sesction to topics
+// same as chairpersons
+//  in formatting tab title select box checkbox -> the box to write the character then linebreak symbol and remove rest
+//  creat new style needs refinment
+//  remove profiles
+// fix initial panel size
+// name change: ClickGenda QuickGend UltraGenda ClickAgenda Autogenda, ProGenda, agendaflow+
 
 
 
 
+
+
+//  test all tabs features
 //  option to add optional style to beaklines and if there is no styles assigned it will generate one for each placeholder with name like the csv placeholder
 //  Phase 5: Add advanced features (column-specific styles, style preview + breaklines stylings)
     Phase 3 – Per-Column Styling
@@ -35,41 +53,22 @@ v2.0
     Header row → specific CellStyle.
 //  🔲 Auto-fit & resize options (fit table to text frame, distribute columns evenly).
 //  table overseat check box to new page or keep overseats
-//  
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-dosent complete table overseat
-dosemt use table onle text placeholders
-
-
-add ataglange mode
-
-header p style
-header c style
-
-table to assign to all table
-
-// taable overseat to new page keep with overseat and manually fix it
 // cell vetical size automate
+// auto fit the text placeholder to fit the max rows in one page
 
 
-name change:
-ClickGenda QuickGend UltraGenda ClickAgenda Autogenda, ProGenda, agendaflow+
+
+
+
+
+Section Dropdown Checkboxes text input field panel section scroll list  radio btn
+header p style > header Cell style
+topics p style > topics Cell style > Topics Table style
+
+
+
+
+
 
 
 
@@ -82,6 +81,8 @@ ClickGenda QuickGend UltraGenda ClickAgenda Autogenda, ProGenda, agendaflow+
 // inline confg maybe add text frame option columns with line break
 // use windows explorer new ui to choose folder
 // plugin export ready to use excel/csv with all data
+
+// add ataglange mode
 --------------------------------------------------------------------------------------
 sessionTitle
 sessionNo

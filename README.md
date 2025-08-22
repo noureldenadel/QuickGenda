@@ -1,4 +1,4 @@
-# SmartAgenda Creator v1.0
+# QuickGenda v1.0
 # Created by noorr @2025
 
 **Professional InDesign Script for Automated Conference Agenda Generation**
@@ -10,8 +10,8 @@ Transform your CSV data into beautifully formatted InDesign agendas with intelli
 1. **Prepare your InDesign template** with labeled placeholders
 2. **Format your CSV data** according to the specifications below
 3. **Run the script** in InDesign with your template open
-4. **Configure layout options** in the SmartAgenda Configuration panel
-5. **Import your CSV** and let SmartAgenda do the rest!
+4. **Configure layout options** in the QuickGenda Configuration panel
+5. **Import your CSV** and let QuickGenda do the rest!
 
 ## 📋 System Requirements
 
@@ -111,7 +111,7 @@ The script automatically tries multiple naming variations:
 - `flagjohnsmith.jpg`
 
 ### Name Processing
-SmartAgenda automatically strips academic titles:
+QuickGenda automatically strips academic titles:
 - `Prof. Dr. John Smith|CEO` → `John Smith`
 - `Dr. Jane Doe, MD` → `Jane Doe`
 - `Associate Prof. Robert Johnson` → `Robert Johnson`
@@ -141,7 +141,7 @@ SmartAgenda automatically strips academic titles:
 2. **Run the script:** File → Scripts → Scripts Panel → SmartAgenda_Creator.jsx
 3. **Select your CSV file** when prompted
 4. **Review detected fields** in the confirmation dialog
-5. **Configure layout options** in the SmartAgenda Configuration panel:
+5. **Configure layout options** in the QuickGenda Configuration panel:
    - Set chairperson layout (inline/grid)
    - Choose topic layout (table/independent)  
    - Configure line break replacements
@@ -151,7 +151,7 @@ SmartAgenda automatically strips academic titles:
 
 ## 📊 Reports & Feedback
 
-SmartAgenda generates comprehensive reports including:
+QuickGenda generates comprehensive reports including:
 - ✅ **Import success summary** - sessions and topics processed
 - ⚠️ **Overset text alerts** - text that doesn't fit in frames
 - 🖼️ **Image placement results** - successful and failed image placements
@@ -210,12 +210,12 @@ SmartAgenda generates comprehensive reports including:
 - Use high-quality images (300+ DPI)
 - Maintain consistent aspect ratios
 
-## 📞 Support & Updates
+## ⚙️ Support & Updates
 
-**Script Version:** 1.0  
-**Release Date:** August 17, 2025  
+**Script Version:** 2.0  
+**Release Date:** August 22, 2025  
 **Compatibility:** InDesign CS6+
 
 ---
 
-**SmartAgenda Creator** - Transform your conference planning workflow with intelligent automation.
+**QuickGenda** - Transform your conference planning workflow with intelligent automation.

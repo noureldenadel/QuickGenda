@@ -1,5 +1,5 @@
-// SmartAgenda_Creator.jsx (v1.0 - Initial Professional Release)
-// Date: August 17, 2025
+// SmartAgenda_Creator.jsx (v2.0 - Styling and Layout)
+// Date: August 22, 2025
 // Author: noorr
 // 
 // ** CORE FEATURES **
@@ -124,14 +124,331 @@
 //   • Comprehensive error handling
 //   • Professional reporting system
 //   • Enterprise-grade template management
-
+// v2.0 (August 22, 2025) - Bug fixes and improvements
+//   • Copy Parent page elements to new document
 #target indesign
+
+// Define script version for UI display
+var SCRIPT_VERSION = "v2.0 (August 22, 2025)";
+
+// ===================== FORMATTING TAB (COMBINED) =====================
+// Top-level definition so it is available to getUnifiedSettingsPanel
+function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields) {
+    tab.alignChildren = 'fill';
+    tab.margins = [15, 15, 15, 15];
+
+    function getParagraphStyleNames() {
+        var names = ['— None —'];
+        try {
+            var ps = app.activeDocument.paragraphStyles;
+            for (var i = 0; i < ps.length; i++) {
+                var nm = ps[i].name;
+                if (nm && nm !== '[Basic Paragraph]') names.push(nm);
+            }
+        } catch (e) {}
+        return names;
+    }
+    function getTableStyleNames() {
+        var names = ['— None —'];
+        try { var ts = app.activeDocument.tableStyles; for (var i=0;i<ts.length;i++) names.push(ts[i].name); } catch(e) {}
+        return names;
+    }
+    function getCellStyleNames() {
+        var names = ['— None —'];
+        try { var cs = app.activeDocument.cellStyles; for (var i=0;i<cs.length;i++) names.push(cs[i].name); } catch(e) {}
+        return names;
+    }
+
+    function addStyleRow(parent, labelText, ddItems, preselectText) {
+        var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 8; grp.alignChildren = 'left';
+        var st = grp.add('statictext', undefined, labelText); st.preferredSize.width = 80;
+        var dd = grp.add('dropdownlist', undefined, ddItems); dd.preferredSize.width = 220;
+        if (preselectText) {
+            for (var i=0;i<dd.items.length;i++){ if (dd.items[i].text === preselectText){ dd.selection = i; break; } }
+        } else { dd.selection = 0; }
+        return { group: grp, label: st, dropdown: dd };
+    }
+    function addBreakControlsInline(parent, defaultEnabled, defaultChar) {
+        var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 6; grp.alignChildren = 'left';
+        var cb = grp.add('checkbox', undefined, '|->¶'); cb.value = !!defaultEnabled; // visual indicator only
+        var st1 = grp.add('statictext', undefined, 'Replace:');
+        var et = grp.add('edittext', undefined, (defaultChar || '|')); et.characters = 4;
+        var st2 = grp.add('statictext', undefined, 'with line breaks');
+        return { group: grp, checkbox: cb, charInput: et };
+    }
+
+    // Session Fields
+    var pnlSession = tab.add('panel', undefined, 'Session Fields');
+    pnlSession.margins = [15, 15, 15, 15]; pnlSession.alignChildren = 'left';
+    var paraItems = getParagraphStyleNames();
+
+    var rowTitle = addStyleRow(pnlSession, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.titlePara : null);
+    var brTitle = addBreakControlsInline(rowTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].character : '|');
+
+    var rowTime = addStyleRow(pnlSession, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.timePara : null);
+    var brTime = addBreakControlsInline(rowTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].character : '|');
+
+    var rowNo = addStyleRow(pnlSession, 'Number:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.noPara : null);
+    var brNo = addBreakControlsInline(rowNo.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].character : '|');
+
+    // Chairpersons
+    var pnlChair = tab.add('panel', undefined, 'Chairpersons');
+    pnlChair.margins = [15, 15, 15, 15]; pnlChair.alignChildren = 'left';
+    var rowChairInline = addStyleRow(pnlChair, 'Style (Inline):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.inlinePara : null);
+    var rowChairGrid = addStyleRow(pnlChair, 'Style (Grid):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.gridPara : null);
+    var brChair = addBreakControlsInline(rowChairInline.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].character : '||');
+
+    // Topics
+    var pnlTopics = tab.add('panel', undefined, 'Topics');
+    pnlTopics.margins = [15, 15, 15, 15]; pnlTopics.alignChildren = 'left';
+    var tableItems = getTableStyleNames();
+    var cellItems = getCellStyleNames();
+    var rowTbl = addStyleRow(pnlTopics, 'Table:', tableItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.tableStyle : null);
+    var rowCell = addStyleRow(pnlTopics, 'Cells:', cellItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.cellStyle : null);
+
+    var rowTopicTime = addStyleRow(pnlTopics, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.timePara : null);
+    var brTopicTime = addBreakControlsInline(rowTopicTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].character : '|');
+
+    var rowTopicTitle = addStyleRow(pnlTopics, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.titlePara : null);
+    var brTopicTitle = addBreakControlsInline(rowTopicTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].character : '|');
+
+    var rowTopicSpeaker = addStyleRow(pnlTopics, 'Speaker:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : null);
+    var brTopicSpeaker = addBreakControlsInline(rowTopicSpeaker.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].character : '|');
+
+    // Create New Style button
+    var grpNew = tab.add('group'); grpNew.alignment = 'left';
+    var btnNewStyle = grpNew.add('button', undefined, '+ Create New Style...');
+    btnNewStyle.onClick = function() {
+        try {
+            var w = new Window('dialog', 'Create New Style'); w.alignChildren = 'left';
+            var g1 = w.add('group'); g1.add('statictext', undefined, 'Name:'); var etName = g1.add('edittext', undefined, ''); etName.characters = 24;
+            var g2 = w.add('group'); g2.add('statictext', undefined, 'Type:'); var ddType = g2.add('dropdownlist', undefined, ['Paragraph','Table','Cell']); ddType.selection = 0;
+            var gBtn = w.add('group'); var ok = gBtn.add('button', undefined, 'OK'); gBtn.add('button', undefined, 'Cancel', {name:'cancel'});
+            ok.onClick = function(){ w.close(1); };
+            if (w.show() !== 1) return;
+            var name = etName.text; var type = ddType.selection.text;
+            if (!name || name === '') return;
+            if (type === 'Paragraph') { app.activeDocument.paragraphStyles.add({name:name}); }
+            else if (type === 'Table') { app.activeDocument.tableStyles.add({name:name}); }
+            else { app.activeDocument.cellStyles.add({name:name}); }
+        } catch (e) { alert('Failed to create style: ' + e); }
+        // repopulate dropdowns
+        var pItems = getParagraphStyleNames(); var tItems = getTableStyleNames(); var cItems = getCellStyleNames();
+        function repop(dd, items){ if (!dd) return; var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null; dd.removeAll(); for (var i=0;i<items.length;i++) dd.add('item', items[i]); dd.selection = sel ? (function(){ for (var j=0;j<dd.items.length;j++){ if(dd.items[j].text===sel) return j;} return 0;})() : 0; }
+        repop(rowTitle.dropdown, pItems); repop(rowTime.dropdown, pItems); repop(rowNo.dropdown, pItems);
+        repop(rowChairInline.dropdown, pItems); repop(rowChairGrid.dropdown, pItems);
+        repop(rowTopicTime.dropdown, pItems); repop(rowTopicTitle.dropdown, pItems); repop(rowTopicSpeaker.dropdown, pItems);
+        repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems);
+    };
+
+    // Hide rows based on CSV availability
+    try {
+        if (availableFields) {
+            if (!availableFields['Session Title']) { rowTitle.group.visible = false; brTitle.group.visible = false; }
+            if (!availableFields['Session Time']) { rowTime.group.visible = false; brTime.group.visible = false; }
+            if (!availableFields['Session No']) { rowNo.group.visible = false; brNo.group.visible = false; }
+            if (!availableFields['Chairpersons']) { pnlChair.visible = false; }
+            if (!availableFields['Time']) { rowTopicTime.group.visible = false; brTopicTime.group.visible = false; }
+            if (!availableFields['Topic Title']) { rowTopicTitle.group.visible = false; brTopicTitle.group.visible = false; }
+            if (!availableFields['Speaker']) { rowTopicSpeaker.group.visible = false; brTopicSpeaker.group.visible = false; }
+        }
+    } catch (e) {}
+
+    // Expose properties so existing collectors work
+    tab.ddSessionTitle = rowTitle.dropdown;
+    tab.ddSessionTime = rowTime.dropdown;
+    tab.ddSessionNo = rowNo.dropdown;
+    tab.ddChairInline = rowChairInline.dropdown;
+    tab.ddChairGrid = rowChairGrid.dropdown;
+    tab.ddTableStyle = rowTbl.dropdown;
+    tab.ddCellStyle = rowCell.dropdown;
+    tab.ddTopicTime = rowTopicTime.dropdown;
+    tab.ddTopicTitle = rowTopicTitle.dropdown;
+    tab.ddTopicSpeaker = rowTopicSpeaker.dropdown;
+
+    tab.sessionControls = {
+        'SessionTitle': { checkbox: brTitle.checkbox, charInput: brTitle.charInput },
+        'SessionTime': { checkbox: brTime.checkbox, charInput: brTime.charInput },
+        'SessionNo': { checkbox: brNo.checkbox, charInput: brNo.charInput }
+    };
+    tab.chairpersonControls = {
+        'Chairpersons': { checkbox: brChair.checkbox, charInput: brChair.charInput }
+    };
+    tab.topicControls = {
+        'topicTime': { checkbox: brTopicTime.checkbox, charInput: brTopicTime.charInput },
+        'topicTitle': { checkbox: brTopicTitle.checkbox, charInput: brTopicTitle.charInput },
+        'topicSpeaker': { checkbox: brTopicSpeaker.checkbox, charInput: brTopicSpeaker.charInput }
+    };
+}
 
 function main() {
     if (app.documents.length === 0) {
         alert("Error: No document is open.\nPlease open your template file first.");
         return;
     }
+
+// ===================== FORMATTING TAB (COMBINED) =====================
+function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields) {
+    tab.alignChildren = 'fill';
+    tab.margins = [15, 15, 15, 15];
+
+    function getParagraphStyleNames() {
+        var names = ['— None —'];
+        try {
+            var ps = app.activeDocument.paragraphStyles;
+            for (var i = 0; i < ps.length; i++) {
+                var nm = ps[i].name;
+                if (nm && nm !== '[Basic Paragraph]') names.push(nm);
+            }
+        } catch (e) {}
+        return names;
+    }
+    function getTableStyleNames() {
+        var names = ['— None —'];
+        try { var ts = app.activeDocument.tableStyles; for (var i=0;i<ts.length;i++) names.push(ts[i].name); } catch(e) {}
+        return names;
+    }
+    function getCellStyleNames() {
+        var names = ['— None —'];
+        try { var cs = app.activeDocument.cellStyles; for (var i=0;i<cs.length;i++) names.push(cs[i].name); } catch(e) {}
+        return names;
+    }
+
+    function addStyleRow(parent, labelText, ddItems, preselectText) {
+        var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 8; grp.alignChildren = 'left';
+        var st = grp.add('statictext', undefined, labelText); st.preferredSize.width = 80;
+        var dd = grp.add('dropdownlist', undefined, ddItems); dd.preferredSize.width = 220;
+        if (preselectText) {
+            for (var i=0;i<dd.items.length;i++){ if (dd.items[i].text === preselectText){ dd.selection = i; break; } }
+        } else { dd.selection = 0; }
+        return { group: grp, label: st, dropdown: dd };
+    }
+    function addBreakControlsInline(parent, defaultEnabled, defaultChar) {
+        var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 6; grp.alignChildren = 'left';
+        var cb = grp.add('checkbox', undefined, '|->¶'); cb.value = !!defaultEnabled; // visual indicator only
+        var st1 = grp.add('statictext', undefined, 'Replace:');
+        var et = grp.add('edittext', undefined, (defaultChar || '|')); et.characters = 4;
+        var st2 = grp.add('statictext', undefined, 'with line breaks');
+        return { group: grp, checkbox: cb, charInput: et };
+    }
+
+    // Session Fields
+    var pnlSession = tab.add('panel', undefined, 'Session Fields');
+    pnlSession.margins = [15, 15, 15, 15]; pnlSession.alignChildren = 'left';
+    var paraItems = getParagraphStyleNames();
+
+    var rowTitle = addStyleRow(pnlSession, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.titlePara : null);
+    var brTitle = addBreakControlsInline(rowTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].character : '|');
+
+    var rowTime = addStyleRow(pnlSession, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.timePara : null);
+    var brTime = addBreakControlsInline(rowTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].character : '|');
+
+    var rowNo = addStyleRow(pnlSession, 'Number:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.noPara : null);
+    var brNo = addBreakControlsInline(rowNo.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].character : '|');
+
+    // Chairpersons
+    var pnlChair = tab.add('panel', undefined, 'Chairpersons');
+    pnlChair.margins = [15, 15, 15, 15]; pnlChair.alignChildren = 'left';
+    var rowChairInline = addStyleRow(pnlChair, 'Style (Inline):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.inlinePara : null);
+    var rowChairGrid = addStyleRow(pnlChair, 'Style (Grid):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.gridPara : null);
+    var brChair = addBreakControlsInline(rowChairInline.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].character : '||');
+
+    // Topics
+    var pnlTopics = tab.add('panel', undefined, 'Topics');
+    pnlTopics.margins = [15, 15, 15, 15]; pnlTopics.alignChildren = 'left';
+    var tableItems = getTableStyleNames();
+    var cellItems = getCellStyleNames();
+    var rowTbl = addStyleRow(pnlTopics, 'Table:', tableItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.tableStyle : null);
+    var rowCell = addStyleRow(pnlTopics, 'Cells:', cellItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.cellStyle : null);
+
+    var rowTopicTime = addStyleRow(pnlTopics, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.timePara : null);
+    var brTopicTime = addBreakControlsInline(rowTopicTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].character : '|');
+
+    var rowTopicTitle = addStyleRow(pnlTopics, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.titlePara : null);
+    var brTopicTitle = addBreakControlsInline(rowTopicTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].character : '|');
+
+    var rowTopicSpeaker = addStyleRow(pnlTopics, 'Speaker:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : null);
+    var brTopicSpeaker = addBreakControlsInline(rowTopicSpeaker.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].character : '|');
+
+    // Create New Style button
+    var grpNew = tab.add('group'); grpNew.alignment = 'left';
+    var btnNewStyle = grpNew.add('button', undefined, '+ Create New Style...');
+    btnNewStyle.onClick = function() {
+        try {
+            var w = new Window('dialog', 'Create New Style'); w.alignChildren = 'left';
+            var g1 = w.add('group'); g1.add('statictext', undefined, 'Name:'); var etName = g1.add('edittext', undefined, ''); etName.characters = 24;
+            var g2 = w.add('group'); g2.add('statictext', undefined, 'Type:'); var ddType = g2.add('dropdownlist', undefined, ['Paragraph','Table','Cell']); ddType.selection = 0;
+            var gBtn = w.add('group'); var ok = gBtn.add('button', undefined, 'OK'); gBtn.add('button', undefined, 'Cancel', {name:'cancel'});
+            ok.onClick = function(){ w.close(1); };
+            if (w.show() !== 1) return;
+            var name = etName.text; var type = ddType.selection.text;
+            if (!name || name === '') return;
+            if (type === 'Paragraph') { app.activeDocument.paragraphStyles.add({name:name}); }
+            else if (type === 'Table') { app.activeDocument.tableStyles.add({name:name}); }
+            else { app.activeDocument.cellStyles.add({name:name}); }
+        } catch (e) { alert('Failed to create style: ' + e); }
+        // repopulate dropdowns
+        var pItems = getParagraphStyleNames(); var tItems = getTableStyleNames(); var cItems = getCellStyleNames();
+        function repop(dd, items){ if (!dd) return; var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null; dd.removeAll(); for (var i=0;i<items.length;i++) dd.add('item', items[i]); dd.selection = sel ? (function(){ for (var j=0;j<dd.items.length;j++){ if(dd.items[j].text===sel) return j;} return 0;})() : 0; }
+        repop(rowTitle.dropdown, pItems); repop(rowTime.dropdown, pItems); repop(rowNo.dropdown, pItems);
+        repop(rowChairInline.dropdown, pItems); repop(rowChairGrid.dropdown, pItems);
+        repop(rowTopicTime.dropdown, pItems); repop(rowTopicTitle.dropdown, pItems); repop(rowTopicSpeaker.dropdown, pItems);
+        repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems);
+    };
+
+    // Hide rows based on CSV availability
+    try {
+        if (availableFields) {
+            if (!availableFields['Session Title']) { rowTitle.group.visible = false; brTitle.group.visible = false; }
+            if (!availableFields['Session Time']) { rowTime.group.visible = false; brTime.group.visible = false; }
+            if (!availableFields['Session No']) { rowNo.group.visible = false; brNo.group.visible = false; }
+            if (!availableFields['Chairpersons']) { pnlChair.visible = false; }
+            if (!availableFields['Time']) { rowTopicTime.group.visible = false; brTopicTime.group.visible = false; }
+            if (!availableFields['Topic Title']) { rowTopicTitle.group.visible = false; brTopicTitle.group.visible = false; }
+            if (!availableFields['Speaker']) { rowTopicSpeaker.group.visible = false; brTopicSpeaker.group.visible = false; }
+        }
+    } catch (e) {}
+
+    // Expose properties so existing collectors work
+    tab.ddSessionTitle = rowTitle.dropdown;
+    tab.ddSessionTime = rowTime.dropdown;
+    tab.ddSessionNo = rowNo.dropdown;
+    tab.ddChairInline = rowChairInline.dropdown;
+    tab.ddChairGrid = rowChairGrid.dropdown;
+    tab.ddTableStyle = rowTbl.dropdown;
+    tab.ddCellStyle = rowCell.dropdown;
+    tab.ddTopicTime = rowTopicTime.dropdown;
+    tab.ddTopicTitle = rowTopicTitle.dropdown;
+    tab.ddTopicSpeaker = rowTopicSpeaker.dropdown;
+
+    tab.sessionControls = {
+        'SessionTitle': { checkbox: brTitle.checkbox, charInput: brTitle.charInput },
+        'SessionTime': { checkbox: brTime.checkbox, charInput: brTime.charInput },
+        'SessionNo': { checkbox: brNo.checkbox, charInput: brNo.charInput }
+    };
+    tab.chairpersonControls = {
+        'Chairpersons': { checkbox: brChair.checkbox, charInput: brChair.charInput }
+    };
+    tab.topicControls = {
+        'topicTime': { checkbox: brTopicTime.checkbox, charInput: brTopicTime.charInput },
+        'topicTitle': { checkbox: brTopicTitle.checkbox, charInput: brTopicTitle.charInput },
+        'topicSpeaker': { checkbox: brTopicSpeaker.checkbox, charInput: brTopicSpeaker.charInput }
+    };
+}
     var templateDoc = app.activeDocument;
 
     // --- Create a new document from the template ---
@@ -140,6 +457,9 @@ function main() {
     // Copy document settings from template to new document BEFORE any page operations
     copyDocumentSettings(templateDoc, doc);
 
+    // Copy master (Parent) spreads from template so applied masters can be preserved
+    var masterMap = copyMasterSpreads(templateDoc, doc);
+
     // Duplicate template pages to the new document (this will be our master template)
     templateDoc.pages.everyItem().duplicate(LocationOptions.AFTER, doc.pages.lastItem());
 
@@ -147,6 +467,8 @@ function main() {
     if (doc.pages.length > 1) {
         doc.pages[0].remove();
     }
+    // Apply corresponding masters from template to the duplicated pages
+    applyMastersToPages(templateDoc, doc, masterMap);
 
     // --- Detect layout capabilities of the template ---
     var hasIndependentTopicLayout = detectIndependentTopicSetup(doc.pages[0]);
@@ -170,23 +492,26 @@ function main() {
     var sessionsData = parseResult.sessions;
     var availableFields = parseResult.availableFields;
 
-    // Show user what fields were detected
+    // Build CSV info for CAD Info tab instead of alerting
     var fieldsList = [];
     for (var field in availableFields) {
         if (availableFields[field]) fieldsList.push(field);
     }
-    alert("CSV loaded successfully!\n\nDetected fields: " + fieldsList.join(", ") + 
-          "\n\nSessions found: " + sessionsData.length);
+    var csvInfo = {
+        fieldsList: fieldsList,
+        sessionsCount: sessionsData.length,
+        version: SCRIPT_VERSION
+    };
 
     // Get all user options from unified settings panel
-    var allOptions = getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields);
+    var allOptions = getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields, csvInfo);
     if (!allOptions) { doc.close(SaveOptions.NO); return; }
 
     var templatePage = doc.pages[0]; // This is now our master template page
     for (var i = 0; i < sessionsData.length; i++) {
         // Always duplicate the template page for each session
         var currentPage = templatePage.duplicate(LocationOptions.AFTER, doc.pages.lastItem());
-        fillPagePlaceholders(currentPage, sessionsData[i], allOptions.chairOptions, allOptions.topicOptions, allOptions.lineBreakOptions, availableFields);
+        fillPagePlaceholders(currentPage, sessionsData[i], allOptions.chairOptions, allOptions.topicOptions, allOptions.lineBreakOptions, allOptions.stylesOptions, availableFields);
     }
 
     // Remove the master template page after creating all session pages
@@ -202,6 +527,83 @@ function main() {
         }
     }
 }
+
+// Create a paragraph style if missing; returns the style name
+function createParagraphStyleIfMissing(name, props) {
+    try {
+        var doc = app.activeDocument;
+        var ps = doc.paragraphStyles.itemByName(name);
+        if (ps && ps.isValid) return name;
+        ps = doc.paragraphStyles.add({ name: name });
+        // Apply safe subset of properties
+        try { if (props && props.pointSize !== undefined) ps.pointSize = props.pointSize; } catch (e1) {}
+        try { if (props && props.leading !== undefined) ps.leading = props.leading; } catch (e2) {}
+        try { if (props && props.justification !== undefined) ps.justification = props.justification; } catch (e3) {}
+        try { if (props && props.appliedFont) ps.appliedFont = props.appliedFont; } catch (e4) {}
+        try { if (props && props.fontStyle) ps.fontStyle = props.fontStyle; } catch (e5) {}
+        return name;
+    } catch (e) { return name; }
+}
+
+// Create a table style if missing; returns the style name
+function createTableStyleIfMissing(name, props) {
+    try {
+        var doc = app.activeDocument;
+        var ts = doc.tableStyles.itemByName(name);
+        if (ts && ts.isValid) return name;
+        ts = doc.tableStyles.add({ name: name });
+        // Safe basic props
+        try { if (props && props.headerRegionCellStyle) ts.headerRegionCellStyle = props.headerRegionCellStyle; } catch (e1) {}
+        try { if (props && props.bodyRegionCellStyle) ts.bodyRegionCellStyle = props.bodyRegionCellStyle; } catch (e2) {}
+        return name;
+    } catch (e) { return name; }
+}
+
+// Create a cell style if missing; returns the style name
+function createCellStyleIfMissing(name, props) {
+    try {
+        var doc = app.activeDocument;
+        var cs = doc.cellStyles.itemByName(name);
+        if (cs && cs.isValid) return name;
+        cs = doc.cellStyles.add({ name: name });
+        // Safe basic props
+        try { if (props && props.verticalJustification !== undefined) cs.verticalJustification = props.verticalJustification; } catch (e1) {}
+        try { if (props && props.topInset !== undefined) cs.topInset = props.topInset; } catch (e2) {}
+        try { if (props && props.bottomInset !== undefined) cs.bottomInset = props.bottomInset; } catch (e3) {}
+        try { if (props && props.leftInset !== undefined) cs.leftInset = props.leftInset; } catch (e4) {}
+        try { if (props && props.rightInset !== undefined) cs.rightInset = props.rightInset; } catch (e5) {}
+        return name;
+    } catch (e) { return name; }
+}
+
+// Ensure a baseline set of default styles exists; returns names used
+function ensureDefaultStyles() {
+    var defaults = {
+        sessionTitle: "SessionTitle",
+        sessionTime: "SessionTime",
+        tableStyle: "TableStyle",
+        headerCell: "HeaderCell",
+        bodyCell: "BodyCell"
+    };
+    try {
+        // Paragraph styles
+        createParagraphStyleIfMissing(defaults.sessionTitle, { pointSize: 16, leading: 18 });
+        createParagraphStyleIfMissing(defaults.sessionTime, { pointSize: 10, leading: 12 });
+        // Cell styles first (so we can set them on table style)
+        createCellStyleIfMissing(defaults.headerCell, { topInset: 2, bottomInset: 2, leftInset: 2, rightInset: 2 });
+        createCellStyleIfMissing(defaults.bodyCell, { topInset: 1, bottomInset: 1, leftInset: 1, rightInset: 1 });
+        // Table style referencing cell styles if possible
+        var doc = app.activeDocument;
+        var headerCS = doc.cellStyles.itemByName(defaults.headerCell);
+        var bodyCS = doc.cellStyles.itemByName(defaults.bodyCell);
+        createTableStyleIfMissing(defaults.tableStyle, {
+            headerRegionCellStyle: headerCS && headerCS.isValid ? headerCS : undefined,
+            bodyRegionCellStyle: bodyCS && bodyCS.isValid ? bodyCS : undefined
+        });
+    } catch (e) {}
+    return defaults;
+}
+
 
 /* ---------------- LAYOUT DETECTION ---------------- */
 
@@ -347,12 +749,63 @@ function parseSeparatedLine(line, delim) {
 
 function countChar(s, ch) { var c = 0; for (var i = 0; i < s.length; i++) if (s.charAt(i) === ch) c++; return c; }
 function indexOfExact(arr, str) { for (var i = 0; i < arr.length; i++) if (arr[i] === str) return i; return -1; }
+
+// Enumerate Table Styles available in the active document
+function getTableStyleNames() {
+    var names = [];
+    try {
+        var doc = app.activeDocument;
+        // In some versions, allTableStyles includes defaults; fallback to tableStyles
+        var arr = doc.allTableStyles ? doc.allTableStyles : doc.tableStyles;
+        for (var i = 0; i < arr.length; i++) {
+            try {
+                var nm = arr[i].name;
+                if (!nm) continue;
+                if (nm.charAt(0) === '[') continue; // Skip [Basic Table] etc.
+                if (indexOfExact(names, nm) === -1) names.push(nm);
+            } catch (ig) {}
+        }
+    } catch (e) {}
+    names.sort();
+    return names;
+}
+
+// Enumerate Cell Styles available in the active document
+function getCellStyleNames() {
+    var names = [];
+    try {
+        var doc = app.activeDocument;
+        var arr = doc.allCellStyles ? doc.allCellStyles : doc.cellStyles;
+        for (var i = 0; i < arr.length; i++) {
+            try {
+                var nm = arr[i].name;
+                if (!nm) continue;
+                if (nm.charAt(0) === '[') continue; // Skip [None] etc.
+                if (indexOfExact(names, nm) === -1) names.push(nm);
+            } catch (ig) {}
+        }
+    } catch (e) {}
+    names.sort();
+    return names;
+}
 function trimES(s) { if (s === null || s === undefined) return ""; return s.replace(/^\s+|\s+$/g, ""); }
 
 /* ---------------- UNIFIED SETTINGS PANEL ---------------- */
 
-function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields) {
+function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields, csvInfo) {
     var defaultSettings = getDefaultSettings();
+    // Ensure a minimal set of default styles exists and prefill defaults if not set
+    var createdDefaults = ensureDefaultStyles();
+    if (!defaultSettings.stylesOptions) defaultSettings.stylesOptions = {};
+    if (!defaultSettings.stylesOptions.session) defaultSettings.stylesOptions.session = {};
+    if (!defaultSettings.stylesOptions.table) defaultSettings.stylesOptions.table = {};
+    if (!defaultSettings.stylesOptions.chair) defaultSettings.stylesOptions.chair = defaultSettings.stylesOptions.chair || {};
+    if (!defaultSettings.stylesOptions.topicsIndependent) defaultSettings.stylesOptions.topicsIndependent = defaultSettings.stylesOptions.topicsIndependent || {};
+    // Only set if empty so we don't override user's persisted choices
+    if (!defaultSettings.stylesOptions.session.titlePara) defaultSettings.stylesOptions.session.titlePara = createdDefaults.sessionTitle;
+    if (!defaultSettings.stylesOptions.session.timePara) defaultSettings.stylesOptions.session.timePara = createdDefaults.sessionTime;
+    if (!defaultSettings.stylesOptions.table.tableStyle) defaultSettings.stylesOptions.table.tableStyle = createdDefaults.tableStyle;
+    if (!defaultSettings.stylesOptions.table.cellStyle) defaultSettings.stylesOptions.table.cellStyle = createdDefaults.bodyCell;
     var dlg = new Window('dialog', 'SmartAgenda - Configuration');
     dlg.alignChildren = 'fill';
     dlg.preferredSize.width = 600;
@@ -363,50 +816,276 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     tabGroup.preferredSize.width = 580;
     tabGroup.preferredSize.height = 600;
     
-    // Create tab panels
-    var chairTab = tabGroup.add('tab', undefined, 'Chairpersons');
-    var topicTab = tabGroup.add('tab', undefined, 'Topics');
-    var lineBreakTab = tabGroup.add('tab', undefined, 'Line Breaks');
+    // New tab order and names
+    var overviewTab = tabGroup.add('tab', undefined, 'Overview');
+    var contentTab = tabGroup.add('tab', undefined, 'Content');
+    var formattingTab = tabGroup.add('tab', undefined, 'Formatting');
+    var advancedTab = tabGroup.add('tab', undefined, 'Advanced');
     
-    // ===== CHAIRPERSONS TAB =====
-    setupChairpersonsTab(chairTab, defaultSettings);
+    // Compute template analysis for Overview Dashboard
+    var analysisPage = null;
+    try { analysisPage = app.activeDocument.pages[0]; } catch (e) { analysisPage = null; }
+    var supportsTable = !!hasTableTopicLayout;
+    var supportsIndependent = !!hasIndependentTopicLayout;
+    var hasAvatar = analysisPage ? !!findItemByLabel(analysisPage, 'chairAvatar') : false;
+    var hasFlag = analysisPage ? !!findItemByLabel(analysisPage, 'chairFlag') : false;
+    var imageAutomationAvailable = !!(hasAvatar || hasFlag);
+    var compatibility = (supportsTable || supportsIndependent) ? 'Good' : 'Limited';
+    var suggestedTopicMode = supportsTable ? 'table' : (supportsIndependent ? 'independent' : 'table');
+    var suggestedChairMode = 'inline';
+
+    function applySuggested() {
+        // Apply topics suggestion
+        updateTopicsTabFromSettings(contentTab, { mode: suggestedTopicMode, includeHeader: true });
+        // Apply chair suggestion
+        updateChairpersonsTabFromSettings(contentTab, { mode: suggestedChairMode });
+        // Ensure UI sync
+        if (contentTab && typeof contentTab.syncUI === 'function') contentTab.syncUI();
+    }
+
+    // Setup Overview (formerly Info) as Dashboard
+    setupCADInfoTab(overviewTab, csvInfo, {
+        supportsTable: supportsTable,
+        supportsIndependent: supportsIndependent,
+        imageAutomationAvailable: imageAutomationAvailable,
+        compatibility: compatibility,
+        suggested: {
+            topicMode: suggestedTopicMode,
+            chairMode: suggestedChairMode
+        }
+    }, applySuggested);
     
-    // ===== TOPICS TAB =====
-    setupTopicsTab(topicTab, defaultSettings, hasIndependentTopicLayout, hasTableTopicLayout);
+    // Setup Content (merge Chairpersons + Topics)
+    setupChairpersonsTab(contentTab, defaultSettings);
+    setupTopicsTab(contentTab, defaultSettings, hasIndependentTopicLayout, hasTableTopicLayout);
     
-    // ===== LINE BREAKS TAB =====
-    setupLineBreaksTab(lineBreakTab, defaultSettings, availableFields);
+    // Setup Formatting (merged Line Breaks + Styles)
+    setupFormattingCombinedTab(
+        formattingTab,
+        defaultSettings,
+        hasIndependentTopicLayout,
+        hasTableTopicLayout,
+        availableFields
+    );
     
-    // ===== CENTRALIZED SETTINGS MANAGEMENT =====
-    var pnlSettings = dlg.add('panel', undefined, 'Settings Management');
+    // ===== ADVANCED: CENTRALIZED SETTINGS MANAGEMENT =====
+    // Top strip: Import/Export all (entire configuration)
+    var pnlSettings = advancedTab.add('panel', undefined, 'Settings Management');
     pnlSettings.orientation = 'row';
     pnlSettings.alignChildren = 'center';
     pnlSettings.margins = [15, 15, 15, 15];
-    
     var btnImport = pnlSettings.add('button', undefined, 'Import All Settings');
     var btnExport = pnlSettings.add('button', undefined, 'Export All Settings');
     btnImport.preferredSize.width = 150;
     btnExport.preferredSize.width = 150;
-    
-    // Import all settings button handler
+
+    // Profiles panel: save/load subsets of settings
+    var pnlProfiles = advancedTab.add('panel', undefined, 'Profiles');
+    pnlProfiles.orientation = 'column';
+    pnlProfiles.alignChildren = 'left';
+    pnlProfiles.margins = [15, 15, 15, 15];
+
+    var grpProfileTop = pnlProfiles.add('group');
+    grpProfileTop.orientation = 'row';
+    grpProfileTop.spacing = 10;
+    grpProfileTop.add('statictext', undefined, 'Profile:').preferredSize.width = 60;
+    var ddProfiles = grpProfileTop.add('dropdownlist', undefined, []);
+    ddProfiles.preferredSize.width = 220;
+    var btnRefreshProfiles = grpProfileTop.add('button', undefined, 'Refresh');
+    var btnDeleteProfile = grpProfileTop.add('button', undefined, 'Delete');
+
+    var grpProfileActions = pnlProfiles.add('group');
+    grpProfileActions.orientation = 'row';
+    grpProfileActions.spacing = 10;
+    var btnSaveProfile = grpProfileActions.add('button', undefined, 'Save As...');
+    var btnLoadProfile = grpProfileActions.add('button', undefined, 'Load');
+    var btnResetDefaults = grpProfileActions.add('button', undefined, 'Reset Defaults');
+
+    // Inclusion options panel for profiles
+    var pnlInclude = advancedTab.add('panel', undefined, 'Profile Content');
+    pnlInclude.orientation = 'column';
+    pnlInclude.alignChildren = 'left';
+    pnlInclude.margins = [15, 15, 15, 15];
+    var cbIncChair = pnlInclude.add('checkbox', undefined, 'Include Chairpersons settings'); cbIncChair.value = true;
+    var cbIncTopics = pnlInclude.add('checkbox', undefined, 'Include Topics settings'); cbIncTopics.value = true;
+    var cbIncLineBreaks = pnlInclude.add('checkbox', undefined, 'Include Line Break rules'); cbIncLineBreaks.value = true;
+    var cbIncStyles = pnlInclude.add('checkbox', undefined, 'Include Styles selections'); cbIncStyles.value = true;
+
+    // Debugging & Troubleshooting
+    var pnlDebug = advancedTab.add('panel', undefined, 'Debugging & Troubleshooting');
+    pnlDebug.orientation = 'column';
+    pnlDebug.alignChildren = 'left';
+    pnlDebug.margins = [15, 15, 15, 15];
+    var cbVerbose = pnlDebug.add('checkbox', undefined, 'Verbose console logging ($.writeln)'); cbVerbose.value = false;
+    var cbWarnAsAlerts = pnlDebug.add('checkbox', undefined, 'Show warnings as alerts'); cbWarnAsAlerts.value = false;
+    var cbValidatePlaceholders = pnlDebug.add('checkbox', undefined, 'Validate template placeholders on start'); cbValidatePlaceholders.value = true;
+    var cbStopOnError = pnlDebug.add('checkbox', undefined, 'Stop on first error'); cbStopOnError.value = false;
+
+    // Report preferences
+    var pnlReport = advancedTab.add('panel', undefined, 'Report Preferences');
+    pnlReport.orientation = 'column';
+    pnlReport.alignChildren = 'left';
+    pnlReport.margins = [15, 15, 15, 15];
+    var cbAutoOpenReport = pnlReport.add('checkbox', undefined, 'Auto-open report after generation'); cbAutoOpenReport.value = true;
+    var cbReportImages = pnlReport.add('checkbox', undefined, 'Include image placement results'); cbReportImages.value = true;
+    var cbReportOverset = pnlReport.add('checkbox', undefined, 'Include overset text summary'); cbReportOverset.value = true;
+    var cbReportCounts = pnlReport.add('checkbox', undefined, 'Include session/topic counts'); cbReportCounts.value = true;
+
+    // Utility: Profiles storage under user data folder
+    function getProfilesFolder() {
+        try {
+            var base = Folder.userData;
+            var folder = new Folder(base.fsName + '/SmartAgenda_Profiles');
+            if (!folder.exists) folder.create();
+            return folder;
+        } catch (e) {
+            return Folder.desktop; // fallback
+        }
+    }
+    function listProfiles() {
+        var folder = getProfilesFolder();
+        var files = folder.getFiles(function(f){ return f instanceof File && /\.json$/i.test(f.name); });
+        var names = [];
+        for (var i=0;i<files.length;i++) names.push(files[i].name.replace(/\.json$/i, ''));
+        names.sort();
+        return names;
+    }
+    function refreshProfilesDD(selectName) {
+        ddProfiles.removeAll();
+        var names = listProfiles();
+        for (var i=0;i<names.length;i++) ddProfiles.add('item', names[i]);
+        if (names.length > 0) {
+            var idx = selectName ? indexOfExact(names, selectName) : 0;
+            ddProfiles.selection = (idx >= 0 ? idx : 0);
+        }
+    }
+    function readProfileByName(name) {
+        var file = new File(getProfilesFolder().fsName + '/' + name + '.json');
+        if (!file.exists) return null;
+        try { file.encoding = 'UTF-8'; file.open('r'); var txt = file.read(); file.close(); return jsonFromString(txt); } catch (e) { return null; }
+    }
+    function saveProfileByName(name, data) {
+        var file = new File(getProfilesFolder().fsName + '/' + name + '.json');
+        try { file.encoding = 'UTF-8'; file.open('w'); file.write(settingsToJSON(data)); file.close(); return true; } catch (e) { alert('Failed to save profile: ' + e); return false; }
+    }
+    function deleteProfileByName(name) {
+        var file = new File(getProfilesFolder().fsName + '/' + name + '.json');
+        if (file.exists) { try { return file.remove(); } catch (e) { return false; } }
+        return false;
+    }
+
+    // Wire Import/Export All handlers
     btnImport.onClick = function() {
         var importedSettings = importAllSettings();
         if (importedSettings) {
-            // Update all tabs with imported settings
-            updateChairpersonsTabFromSettings(chairTab, importedSettings.chairOptions || {});
-            updateTopicsTabFromSettings(topicTab, importedSettings.topicOptions || {});
-            updateLineBreaksTabFromSettings(lineBreakTab, importedSettings.lineBreakOptions || {});
+            updateChairpersonsTabFromSettings(contentTab, importedSettings.chairOptions || {});
+            updateTopicsTabFromSettings(contentTab, importedSettings.topicOptions || {});
+            updateLineBreaksTabFromSettings(formattingTab, importedSettings.lineBreakOptions || {});
+            updateStylesTabFromSettings(formattingTab, (importedSettings.stylesOptions || {}), hasIndependentTopicLayout, hasTableTopicLayout, availableFields);
             alert('All settings imported successfully!');
         }
     };
-    
-    // Export all settings button handler
     btnExport.onClick = function() {
-        var allSettings = collectAllSettings(chairTab, topicTab, lineBreakTab);
-        if (exportAllSettings(allSettings)) {
-            alert('All settings exported successfully!');
+        var allSettings = collectAllSettings(contentTab, contentTab, formattingTab, formattingTab);
+        if (exportAllSettings(allSettings)) { alert('All settings exported successfully!'); }
+    };
+
+    // Profiles: Save
+    btnSaveProfile.onClick = function() {
+        var all = collectAllSettings(contentTab, contentTab, formattingTab, formattingTab);
+        var subset = {};
+        if (cbIncChair.value) subset.chairOptions = all.chairOptions;
+        if (cbIncTopics.value) subset.topicOptions = all.topicOptions;
+        if (cbIncLineBreaks.value) subset.lineBreakOptions = all.lineBreakOptions;
+        if (cbIncStyles.value) subset.stylesOptions = all.stylesOptions;
+
+        var w = new Window('dialog', 'Save Profile');
+        w.alignChildren = 'left';
+        w.margins = [15,15,15,15];
+        var grp = w.add('group'); grp.orientation = 'row'; grp.spacing = 10;
+        grp.add('statictext', undefined, 'Name:');
+        var et = grp.add('edittext', undefined, 'MyProfile'); et.characters = 24;
+        var gbtn = w.add('group'); gbtn.orientation = 'row'; gbtn.alignment = 'right';
+        var ok = gbtn.add('button', undefined, 'Save'); var cancel = gbtn.add('button', undefined, 'Cancel', {name:'cancel'});
+        if (w.show() === 1) {
+            var name = trimES(et.text);
+            if (!name) { alert('Please enter a profile name.'); return; }
+            if (saveProfileByName(name, subset)) {
+                refreshProfilesDD(name);
+                alert('Profile saved.');
+            }
         }
     };
+
+    // Profiles: Load
+    btnLoadProfile.onClick = function() {
+        if (!ddProfiles.selection) { alert('No profile selected.'); return; }
+        var name = ddProfiles.selection.text;
+        var data = readProfileByName(name);
+        if (!data) { alert('Failed to load profile.'); return; }
+        if (data.chairOptions && cbIncChair.value) updateChairpersonsTabFromSettings(contentTab, data.chairOptions);
+        if (data.topicOptions && cbIncTopics.value) updateTopicsTabFromSettings(contentTab, data.topicOptions);
+        if (data.lineBreakOptions && cbIncLineBreaks.value) updateLineBreaksTabFromSettings(formattingTab, data.lineBreakOptions);
+        if (data.stylesOptions && cbIncStyles.value) updateStylesTabFromSettings(formattingTab, data.stylesOptions, hasIndependentTopicLayout, hasTableTopicLayout, availableFields);
+        alert('Profile loaded.');
+    };
+
+    // Profiles: Delete
+    btnDeleteProfile.onClick = function() {
+        if (!ddProfiles.selection) { alert('No profile selected.'); return; }
+        var name = ddProfiles.selection.text;
+        if (confirm('Delete profile "' + name + '"?')) {
+            if (deleteProfileByName(name)) { refreshProfilesDD(); }
+            else { alert('Failed to delete profile.'); }
+        }
+    };
+
+    // Profiles: Refresh
+    btnRefreshProfiles.onClick = function(){ refreshProfilesDD(ddProfiles.selection ? ddProfiles.selection.text : null); };
+
+    // Reset defaults: re-apply initial defaults via existing updaters
+    btnResetDefaults.onClick = function() {
+        var defs = getDefaultSettings();
+        updateChairpersonsTabFromSettings(contentTab, {
+            mode: defs.chairMode,
+            inlineSeparator: defs.chairInlineSeparator,
+            order: defs.chairOrder,
+            columns: defs.chairColumns,
+            rows: defs.chairRows,
+            colSpacing: formatValueWithUnit(defs.chairColSpacing, defs.chairUnits),
+            rowSpacing: formatValueWithUnit(defs.chairRowSpacing, defs.chairUnits),
+            units: defs.chairUnits,
+            centerGrid: defs.chairCenterGrid
+        });
+        updateTopicsTabFromSettings(contentTab, {
+            mode: defs.topicMode || (hasTableTopicLayout ? 'table' : 'independent'),
+            includeHeader: defs.topicIncludeHeader,
+            verticalSpacing: '' + defs.topicVerticalSpacing,
+            units: defs.topicUnits
+        });
+        updateLineBreaksTabFromSettings(formattingTab, { lineBreaks: defs.lineBreaks });
+        updateStylesTabFromSettings(formattingTab, defs.stylesOptions || {}, hasIndependentTopicLayout, hasTableTopicLayout, availableFields);
+        if (typeof contentTab.syncUI === 'function') contentTab.syncUI();
+        alert('Defaults restored.');
+    };
+
+    // Expose advanced controls for potential future use
+    advancedTab.profileDropdown = ddProfiles;
+    advancedTab.includeChair = cbIncChair;
+    advancedTab.includeTopics = cbIncTopics;
+    advancedTab.includeLineBreaks = cbIncLineBreaks;
+    advancedTab.includeStyles = cbIncStyles;
+    advancedTab.debugVerbose = cbVerbose;
+    advancedTab.debugWarnAsAlerts = cbWarnAsAlerts;
+    advancedTab.debugValidate = cbValidatePlaceholders;
+    advancedTab.debugStopOnError = cbStopOnError;
+    advancedTab.reportAutoOpen = cbAutoOpenReport;
+    advancedTab.reportIncludeImages = cbReportImages;
+    advancedTab.reportIncludeOverset = cbReportOverset;
+    advancedTab.reportIncludeCounts = cbReportCounts;
+
+    // Initialize profiles list
+    refreshProfilesDD();
     
     // Dialog buttons with credit
     var grpBtns = dlg.add('group');
@@ -432,8 +1111,71 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     
     if (dlg.show() !== 1) return null;
     
-    // Collect all settings and return
-    return collectAllSettings(chairTab, topicTab, lineBreakTab);
+    // Collect all settings and return using merged tabs
+    return collectAllSettings(contentTab, contentTab, formattingTab, formattingTab);
+}
+
+// CAD Info Tab: displays version info and CSV detection summary
+function setupCADInfoTab(tab, csvInfo, analysis, onApplySuggested) {
+    tab.alignChildren = 'left';
+    tab.margins = [15, 15, 15, 15];
+
+    // CSV File Analysis
+    var pnlCSV = tab.add('panel', undefined, 'CSV File Analysis');
+    pnlCSV.margins = [15, 15, 15, 15];
+    pnlCSV.alignChildren = 'left';
+    var grpSessions = pnlCSV.add('group');
+    grpSessions.orientation = 'row';
+    grpSessions.spacing = 10;
+    grpSessions.alignment = 'left';
+    var stSessLabel = grpSessions.add('statictext', undefined, 'Sessions found:');
+    stSessLabel.preferredSize.width = 160;
+    var stSessVal = grpSessions.add('statictext', undefined, '' + ((csvInfo && csvInfo.sessionsCount != null) ? csvInfo.sessionsCount : 0));
+    stSessVal.alignment = 'left';
+
+    var grpCompat = pnlCSV.add('group');
+    grpCompat.orientation = 'row';
+    grpCompat.spacing = 10;
+    grpCompat.alignment = 'left';
+    var stCompatLabel = grpCompat.add('statictext', undefined, 'Template compatibility:');
+    stCompatLabel.preferredSize.width = 160;
+    var stCompatVal = grpCompat.add('statictext', undefined, (analysis && analysis.compatibility) ? analysis.compatibility : 'Unknown');
+    stCompatVal.alignment = 'left';
+
+    // Detected fields list (bigger to avoid scrollbars/overflow)
+    var grpFields = pnlCSV.add('group');
+    grpFields.orientation = 'column';
+    grpFields.alignChildren = 'left';
+    grpFields.alignment = 'left';
+    grpFields.spacing = 6;
+    grpFields.add('statictext', undefined, 'Detected fields:').alignment = 'left';
+    var lbFields = grpFields.add('listbox', undefined, (csvInfo && csvInfo.fieldsList) ? csvInfo.fieldsList : []);
+    lbFields.preferredSize.width = 520;
+    lbFields.preferredSize.height = 220;
+    lbFields.alignment = 'left';
+
+    // Template Analysis
+    var pnlTemplate = tab.add('panel', undefined, 'Template Analysis');
+    pnlTemplate.margins = [15, 15, 15, 15];
+    pnlTemplate.alignChildren = 'left';
+    function yn(vTrue) { return vTrue ? 'Yes' : 'No'; }
+    var g1 = pnlTemplate.add('group'); g1.orientation = 'row'; g1.spacing = 10; g1.alignment = 'left'; var g1l = g1.add('statictext', undefined, 'Supports table layout:'); g1l.preferredSize.width = 200; var g1v = g1.add('statictext', undefined, yn(analysis && analysis.supportsTable)); g1v.alignment = 'left';
+    var g2 = pnlTemplate.add('group'); g2.orientation = 'row'; g2.spacing = 10; g2.alignment = 'left'; var g2l = g2.add('statictext', undefined, 'Supports independent layout:'); g2l.preferredSize.width = 200; var g2v = g2.add('statictext', undefined, yn(analysis && analysis.supportsIndependent)); g2v.alignment = 'left';
+    var g3 = pnlTemplate.add('group'); g3.orientation = 'row'; g3.spacing = 10; g3.alignment = 'left'; var g3l = g3.add('statictext', undefined, 'Image automation available:'); g3l.preferredSize.width = 200; var g3v = g3.add('statictext', undefined, yn(analysis && analysis.imageAutomationAvailable)); g3v.alignment = 'left';
+
+    // Suggested Configuration (no Apply button)
+    var pnlSuggest = tab.add('panel', undefined, 'Suggested Configuration');
+    pnlSuggest.margins = [15, 15, 15, 15];
+    pnlSuggest.alignChildren = 'left';
+    var s1 = pnlSuggest.add('group'); s1.orientation = 'row'; s1.spacing = 10; s1.alignment = 'left'; var s1l = s1.add('statictext', undefined, 'Topic layout:'); s1l.preferredSize.width = 160; var s1v = s1.add('statictext', undefined, analysis && analysis.suggested ? (analysis.suggested.topicMode === 'table' ? 'Table' : 'Independent') : '—'); s1v.alignment = 'left';
+    var s2 = pnlSuggest.add('group'); s2.orientation = 'row'; s2.spacing = 10; s2.alignment = 'left'; var s2l = s2.add('statictext', undefined, 'Chairpersons layout:'); s2l.preferredSize.width = 160; var s2v = s2.add('statictext', undefined, analysis && analysis.suggested ? (analysis.suggested.chairMode === 'inline' ? 'Inline' : 'Grid') : '—'); s2v.alignment = 'left';
+
+    // Script info panel
+    var pnlVersion = tab.add('panel', undefined, 'Script Information');
+    pnlVersion.margins = [15, 15, 15, 15];
+    pnlVersion.alignChildren = 'left';
+    var txtVer = pnlVersion.add('statictext', undefined, 'Version: ' + (csvInfo && csvInfo.version ? csvInfo.version : 'Unknown'));
+    txtVer.graphics.font = ScriptUI.newFont(txtVer.graphics.font.name, ScriptUI.FontStyle.ITALIC, 11);
 }
 
 function setupChairpersonsTab(tab, defaultSettings) {
@@ -450,6 +1192,22 @@ function setupChairpersonsTab(tab, defaultSettings) {
     grpMode.spacing = 10;
     grpMode.add('statictext', undefined, 'Layout:').preferredSize.width = 80;
     var ddMode = grpMode.add('dropdownlist', undefined, ['Inline (single frame)', 'Separate frames grid']);
+    // Add radios for clearer layout selection and hide the dropdown (kept for data collection)
+    var grpRadios = pnlDesc.add('group');
+    grpRadios.orientation = 'row';
+    grpRadios.spacing = 20;
+    var rbInline = grpRadios.add('radiobutton', undefined, 'Inline');
+    var rbGrid = grpRadios.add('radiobutton', undefined, 'Grid');
+    ddMode.visible = false;
+    // Initialize selection based on defaults
+    try {
+        if (defaultSettings && defaultSettings.chairMode === 'grid') {
+            ddMode.selection = 1; rbGrid.value = true;
+        } else { ddMode.selection = 0; rbInline.value = true; }
+    } catch (e) { ddMode.selection = 0; rbInline.value = true; }
+    // Keep ddMode selection in sync for existing collectors
+    rbInline.onClick = function(){ ddMode.selection = 0; if (typeof tab.syncUI === 'function') tab.syncUI(); };
+    rbGrid.onClick = function(){ ddMode.selection = 1; if (typeof tab.syncUI === 'function') tab.syncUI(); };
     ddMode.selection = defaultSettings.chairMode === 'grid' ? 1 : 0;
     ddMode.preferredSize.width = 200;
     
@@ -491,22 +1249,28 @@ function setupChairpersonsTab(tab, defaultSettings) {
     var etRows = grpDims.add('edittext', undefined, defaultSettings.chairRows || '2'); 
     etRows.characters = 4;
     
-    var grpSpace = pnlGrid.add('group'); 
-    grpSpace.orientation = 'row';
-    grpSpace.spacing = 10;
-    grpSpace.add('statictext', undefined, 'Col spacing:').preferredSize.width = 80;
-    var etColSpace = grpSpace.add('edittext', undefined, defaultSettings.chairColSpacing || '8'); 
-    etColSpace.characters = 6;
-    grpSpace.add('statictext', undefined, 'Row spacing:').preferredSize.width = 80;
-    var etRowSpace = grpSpace.add('edittext', undefined, defaultSettings.chairRowSpacing || '4'); 
-    etRowSpace.characters = 6;
-    
-    var grpUnits = pnlGrid.add('group'); 
-    grpUnits.orientation = 'row';
-    grpUnits.spacing = 10;
-    grpUnits.add('statictext', undefined, 'Units:').preferredSize.width = 80;
-    var ddUnits = grpUnits.add('dropdownlist', undefined, ['pt', 'mm', 'cm', 'px']);
-    ddUnits.selection = defaultSettings.chairUnits ? indexOfExact(['pt', 'mm', 'cm', 'px'], defaultSettings.chairUnits) : 0;
+    var grpSpacing = pnlGrid.add('group');
+    grpSpacing.orientation = 'column';
+    grpSpacing.alignChildren = 'left';
+    grpSpacing.margins = [0, 5, 0, 0];
+
+    var grpCol = grpSpacing.add('group'); grpCol.orientation = 'row'; grpCol.spacing = 6; grpCol.alignment = 'left';
+    grpCol.add('statictext', undefined, 'Col spacing:').preferredSize.width = 80;
+    var etColSpace = grpCol.add('edittext', undefined, formatValueWithUnit(defaultSettings.chairColSpacing || 8, defaultSettings.chairUnits || 'pt')); etColSpace.characters = 8;
+    var btnColMinus = grpCol.add('button', undefined, '-'); btnColMinus.preferredSize.width = 22;
+    var btnColPlus = grpCol.add('button', undefined, '+'); btnColPlus.preferredSize.width = 22;
+
+    var grpRow = grpSpacing.add('group'); grpRow.orientation = 'row'; grpRow.spacing = 6; grpRow.alignment = 'left';
+    grpRow.add('statictext', undefined, 'Row spacing:').preferredSize.width = 80;
+    var etRowSpace = grpRow.add('edittext', undefined, formatValueWithUnit(defaultSettings.chairRowSpacing || 4, defaultSettings.chairUnits || 'pt')); etRowSpace.characters = 8;
+    var btnRowMinus = grpRow.add('button', undefined, '-'); btnRowMinus.preferredSize.width = 22;
+    var btnRowPlus = grpRow.add('button', undefined, '+'); btnRowPlus.preferredSize.width = 22;
+
+    // Stepper handlers
+    btnColMinus.onClick = function(){ etColSpace.text = stepValueWithUnit(etColSpace.text, -1, defaultSettings.chairUnits || 'pt'); };
+    btnColPlus.onClick = function(){ etColSpace.text = stepValueWithUnit(etColSpace.text, +1, defaultSettings.chairUnits || 'pt'); };
+    btnRowMinus.onClick = function(){ etRowSpace.text = stepValueWithUnit(etRowSpace.text, -1, defaultSettings.chairUnits || 'pt'); };
+    btnRowPlus.onClick = function(){ etRowSpace.text = stepValueWithUnit(etRowSpace.text, +1, defaultSettings.chairUnits || 'pt'); };
     
     var grpCenter = pnlGrid.add('group');
     grpCenter.orientation = 'row';
@@ -575,7 +1339,6 @@ function setupChairpersonsTab(tab, defaultSettings) {
     tab.etRows = etRows;
     tab.etColSpace = etColSpace;
     tab.etRowSpace = etRowSpace;
-    tab.ddUnits = ddUnits;
     tab.cbCenter = cbCenter;
     tab.cbEnableImages = cbEnableImages;
     tab.etImageFolder = etImageFolder;
@@ -584,16 +1347,33 @@ function setupChairpersonsTab(tab, defaultSettings) {
     // Make syncUI accessible from outside
     tab.syncUI = function() {
         var gridMode = ddMode.selection.index === 1;
-        pnlInline.enabled = !gridMode;
-        pnlGrid.enabled = gridMode;
-        if (gridMode) { 
-            var rowFirst = ddOrder.selection.index === 0; 
-            etCols.enabled = rowFirst; 
-            etRows.enabled = !rowFirst; 
+        // Contextual show/hide to reduce clutter
+        if (pnlInline) { pnlInline.enabled = !gridMode; pnlInline.visible = !gridMode; }
+        if (pnlGrid) { pnlGrid.enabled = gridMode; pnlGrid.visible = gridMode; }
+        if (gridMode) {
+            var rowFirst = ddOrder.selection.index === 0;
+            if (etCols) etCols.enabled = rowFirst;
+            if (etRows) etRows.enabled = !rowFirst;
         }
         // Sync image controls - only available in grid mode
         syncImageUI();
     };
+
+    // Lightweight input validation and sanitization
+    try {
+        if (etCols && typeof etCols.onChanging === 'undefined') {
+            etCols.onChanging = function(){ this.text = this.text.replace(/[^0-9]/g, ''); };
+        }
+        if (etRows && typeof etRows.onChanging === 'undefined') {
+            etRows.onChanging = function(){ this.text = this.text.replace(/[^0-9]/g, ''); };
+        }
+        if (etColSpace && typeof etColSpace.onChanging === 'undefined') {
+            etColSpace.onChanging = function(){ var p = parseValueWithUnit(this.text, defaultSettings.chairUnits || 'pt'); this.text = formatValueWithUnit(p.value, p.unit); };
+        }
+        if (etRowSpace && typeof etRowSpace.onChanging === 'undefined') {
+            etRowSpace.onChanging = function(){ var p = parseValueWithUnit(this.text, defaultSettings.chairUnits || 'pt'); this.text = formatValueWithUnit(p.value, p.unit); };
+        }
+    } catch (e) {}
     
     ddMode.onChange = tab.syncUI; 
     ddOrder.onChange = tab.syncUI;
@@ -678,10 +1458,26 @@ function setupTopicsTab(tab, defaultSettings, hasIndependentLayout, hasTableLayo
         var tableMode = rbTable.value;
         pnlTable.enabled = tableMode;
         pnlIndependent.enabled = !tableMode;
+        // Contextual show/hide to reduce clutter
+        pnlTable.visible = tableMode;
+        pnlIndependent.visible = !tableMode;
     }
     
     rbTable.onClick = syncUI;
     rbIndependent.onClick = syncUI;
+    // Inline validation for spacing
+    try { if (etSpacing && typeof etSpacing.onChanging === 'undefined') { etSpacing.onChanging = function(){ this.text = this.text.replace(/[^0-9]/g, ''); }; } } catch (e) {}
+    // Show reason if a mode is disabled
+    try {
+        if (!hasTableLayout) {
+            var note = pnlMode.add('statictext', undefined, 'Table layout disabled: template has no topicsTable label.');
+            note.graphics.foregroundColor = note.graphics.newPen(note.graphics.PenType.SOLID_COLOR, [0.6,0.2,0.2], 1);
+        }
+        if (!hasIndependentLayout) {
+            var note2 = pnlMode.add('statictext', undefined, 'Independent rows disabled: template missing topicTime/title/speaker frames.');
+            note2.graphics.foregroundColor = note2.graphics.newPen(note2.graphics.PenType.SOLID_COLOR, [0.6,0.2,0.2], 1);
+        }
+    } catch (e) {}
     syncUI();
 }
 
@@ -883,7 +1679,7 @@ function updateLineBreaksTabFromSettings(tab, settings) {
 
 // updateImageAutomationTabFromSettings function removed - functionality moved to chairpersons tab
 
-function collectAllSettings(chairTab, topicTab, lineBreakTab) {
+function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab) {
     // Collect chairperson settings
     var chairOptions = {
         mode: (chairTab.ddMode.selection.index === 0) ? 'inline' : 'grid',
@@ -939,11 +1735,35 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab) {
     }
     
     var lineBreakOptions = { lineBreaks: lineBreaks };
-    
+
+    // Collect styles (Phase 1 - paragraph styles)
+    function val(dd) { return (dd && dd.selection) ? (dd.selection.index === 0 ? '' : dd.selection.text) : ''; }
+    var stylesOptions = {
+        table: {
+            tableStyle: val(stylesTab && stylesTab.ddTableStyle),
+            cellStyle: val(stylesTab && stylesTab.ddCellStyle)
+        },
+        session: {
+            titlePara: val(stylesTab && stylesTab.ddSessionTitle),
+            timePara: val(stylesTab && stylesTab.ddSessionTime),
+            noPara: val(stylesTab && stylesTab.ddSessionNo)
+        },
+        chair: {
+            inlinePara: val(stylesTab && stylesTab.ddChairInline),
+            gridPara: val(stylesTab && stylesTab.ddChairGrid)
+        },
+        topicsIndependent: {
+            timePara: val(stylesTab && stylesTab.ddTopicTime),
+            titlePara: val(stylesTab && stylesTab.ddTopicTitle),
+            speakerPara: val(stylesTab && stylesTab.ddTopicSpeaker)
+        }
+    };
+
     return {
         chairOptions: chairOptions,
         topicOptions: topicOptions,
-        lineBreakOptions: lineBreakOptions
+        lineBreakOptions: lineBreakOptions,
+        stylesOptions: stylesOptions
     };
 }
 
@@ -1007,6 +1827,55 @@ function exportAllSettings(allSettings) {
 
 // Old getTopicLayoutOptions function removed - replaced by unified settings panel
 
+// Parse strings like "8pt", "5 mm", "10.5cm" => { value: 8, unit: 'pt' }
+function parseValueWithUnit(txt, defaultUnit) {
+    if (!txt) return { value: 0, unit: defaultUnit || 'pt' };
+    var m = ("" + txt).trim().match(/^\s*([+-]?\d*(?:\.\d+)?)\s*([a-zA-Z%]*)\s*$/);
+    var unit = defaultUnit || 'pt';
+    var val = 0;
+    if (m) {
+        val = parseFloat(m[1]);
+        if (isNaN(val)) val = 0;
+        if (m[2]) unit = m[2].toLowerCase();
+    }
+    if (unit !== 'pt' && unit !== 'mm' && unit !== 'cm' && unit !== 'px') unit = defaultUnit || 'pt';
+    return { value: val, unit: unit };
+}
+
+function formatValueWithUnit(value, unit) {
+    var v = (typeof value === 'number' && !isNaN(value)) ? value : parseFloat(value);
+    if (isNaN(v)) v = 0;
+    var u = unit || 'pt';
+    return (Math.round(v * 100) / 100) + u;
+}
+
+function stepValueWithUnit(current, delta, defaultUnit) {
+    var p = parseValueWithUnit(current, defaultUnit);
+    var step = 1;
+    // Use smaller step for non-pt metric units
+    if (p.unit === 'mm') step = 0.5;
+    if (p.unit === 'cm') step = 0.1;
+    if (p.unit === 'px') step = 1;
+    var nv = p.value + (delta > 0 ? step : -step);
+    if (nv < 0) nv = 0;
+    return formatValueWithUnit(nv, p.unit);
+}
+
+// Panel styling for visual hierarchy
+// level: 'primary' | 'secondary' | 'option'
+function applyPanelStyle(panel, level) {
+    try {
+        var g = panel.graphics;
+        var bg = [0.92, 0.92, 0.92];
+        var border = [0.60, 0.60, 0.60];
+        if (level === 'primary') { bg = [0.85, 0.85, 0.85]; border = [0.30, 0.30, 0.30]; }
+        else if (level === 'secondary') { bg = [0.90, 0.90, 0.90]; border = [0.45, 0.45, 0.45]; }
+        else if (level === 'option') { bg = [0.96, 0.96, 0.96]; border = [0.75, 0.75, 0.75]; }
+        g.backgroundColor = g.newBrush(g.BrushType.SOLID_COLOR, bg);
+        g.pen = g.newPen(g.PenType.SOLID_COLOR, border, 1);
+    } catch (e) {}
+}
+
 function clampInt(v, min, max) { if (isNaN(v)) v = min; if (v < min) v = min; if (v > max) v = max; return v; }
 
 function toPointsSafe(txt, units) { 
@@ -1023,7 +1892,7 @@ function toPointsSafe(txt, units) {
 
 /* ---------------- PAGE & PLACEHOLDER FILLING ---------------- */
 
-function fillPagePlaceholders(page, session, chairOptions, topicOptions, lineBreakOptions, availableFields) {
+function fillPagePlaceholders(page, session, chairOptions, topicOptions, lineBreakOptions, stylesOptions, availableFields) {
     var hasIndependentTopicLayout = detectIndependentTopicSetup(page);
     var hasTableTopicLayout = !!findItemByLabel(page, "topicsTable");
     var placeholders = findPlaceholdersManually(page, availableFields);
@@ -1060,7 +1929,7 @@ function fillPagePlaceholders(page, session, chairOptions, topicOptions, lineBre
 
     // Fill topics
     if (topicOptions.mode === 'table' && placeholders.topicsTable) {
-        populateTopicsAsTable(placeholders.topicsTable, session.topics, topicOptions, lineBreakOptions);
+        populateTopicsAsTable(placeholders.topicsTable, session.topics, topicOptions, lineBreakOptions, stylesOptions);
     } else if (topicOptions.mode === 'independent' && hasIndependentTopicLayout) {
         populateTopicsAsIndependentRows(page, session.topics, topicOptions, lineBreakOptions);
     }
@@ -1198,37 +2067,121 @@ function populateChairs(page, chairFrame, chairsRaw, opts, lineBreakOptions) {
     }
 }
 
-function populateTopicsAsTable(tableFrame, topics, opts, lineBreakOptions) {
-    try { while (tableFrame.tables.length) tableFrame.tables[0].remove(); } catch (e) { }
-    tableFrame.contents = "";
-    if (topics.length === 0) return;
-    var headerRows = opts.includeHeader ? 1 : 0;
-    var tbl = tableFrame.insertionPoints[0].tables.add({ headerRowCount: headerRows, bodyRowCount: topics.length, columnCount: 3 });
-    var frameWidth = tableFrame.geometricBounds[3] - tableFrame.geometricBounds[1];
-    tbl.columns[0].width = frameWidth * 0.20;
-    tbl.columns[1].width = frameWidth * 0.50;
-    tbl.columns[2].width = frameWidth * 0.30;
-    if (opts.includeHeader) {
-        tbl.rows[0].cells[0].contents = "Time";
-        tbl.rows[0].cells[1].contents = "Topic";
-        tbl.rows[0].cells[2].contents = "Speaker";
+function populateTopicsAsTable(tableFrame, topics, opts, lineBreakOptions, stylesOptions) {
+    // Determine desired structure
+    var desiredCols = 3; // Time, Topic, Speaker
+    var includeHeader = !!opts.includeHeader;
+    var desiredHeaderRows = includeHeader ? 1 : 0;
+
+    // Find or create table without destroying existing styling
+    var tbl = null;
+    if (tableFrame.tables.length > 0) {
+        tbl = tableFrame.tables[0];
+    } else {
+        // Create a fresh table if none exists
+        if (tableFrame.contents === undefined) return; // safety
+        try { tableFrame.contents = ""; } catch (e) {}
+        tbl = tableFrame.texts[0].tables.add({
+            bodyRowCount: Math.max(1, topics.length),
+            columnCount: desiredCols
+        });
     }
+
+    // Set column widths proportionally to the frame width
+    try {
+        var gb = tableFrame.geometricBounds;
+        var frameWidth = gb[3] - gb[1];
+        if (tbl.columns.length >= 3) {
+            tbl.columns[0].width = frameWidth * 0.20;
+            tbl.columns[1].width = frameWidth * 0.50;
+            tbl.columns[2].width = frameWidth * 0.30;
+        }
+    } catch (e) {}
+
+    // Apply Table and Cell Styles if specified
+    try {
+        var doc = app.activeDocument;
+        if (stylesOptions && stylesOptions.table) {
+            var tsName = stylesOptions.table.tableStyle || '';
+            var csName = stylesOptions.table.cellStyle || '';
+            if (tsName) {
+                try {
+                    var tStyle = doc.tableStyles.itemByName(tsName);
+                    if (tStyle && tStyle.isValid) tbl.appliedTableStyle = tStyle;
+                } catch (eTS) {}
+            }
+            if (csName) {
+                try {
+                    var cStyle = doc.cellStyles.itemByName(csName);
+                    if (cStyle && cStyle.isValid) {
+                        tbl.cells.everyItem().appliedCellStyle = cStyle;
+                    }
+                } catch (eCS) {}
+            }
+        }
+    } catch (eApply) {}
+
+    // Ensure header row count matches option (converts first row to header if needed)
+    try { tbl.headerRowCount = desiredHeaderRows; } catch (e) {}
+
+    // Ensure column count is exactly desiredCols (add/remove at end)
+    try {
+        while (tbl.columns.length < desiredCols) tbl.columns.add();
+        while (tbl.columns.length > desiredCols) tbl.columns.lastItem().remove();
+    } catch (e) {}
+
+    // Calculate required total rows
+    var requiredTotalRows = desiredHeaderRows + Math.max(0, topics.length);
+
+    // Add/remove rows at the end to match required count
+    try {
+        while (tbl.rows.length < requiredTotalRows) tbl.rows.add();
+        while (tbl.rows.length > requiredTotalRows && tbl.rows.length > 0) tbl.rows.lastItem().remove();
+    } catch (e) {}
+
+    // If header enabled, set header labels (contents only; preserves cell styles)
+    if (includeHeader && tbl.rows.length >= 1 && tbl.columns.length >= 3) {
+        try {
+            tbl.rows[0].cells[0].contents = "Time";
+            tbl.rows[0].cells[1].contents = "Topic";
+            tbl.rows[0].cells[2].contents = "Speaker";
+        } catch (e) {}
+    }
+
+    // If no topics, we are done after resizing (header may remain)
+    if (topics.length === 0) return;
+
+    // Fill body rows cell-by-cell without altering cell/table styles
+    var startRowIndex = desiredHeaderRows; // first body row index
     for (var i = 0; i < topics.length; i++) {
-        var rIndex = headerRows ? i + 1 : i;
-        tbl.rows[rIndex].cells[0].contents = topics[i].time;
-        if (lineBreakOptions.lineBreaks.topicTime && lineBreakOptions.lineBreaks.topicTime.enabled) {
-            applyLineBreaksToCell(tbl.rows[rIndex].cells[0], lineBreakOptions.lineBreaks.topicTime.character);
-        }
-        
-        tbl.rows[rIndex].cells[1].contents = topics[i].title;
-        if (lineBreakOptions.lineBreaks.topicTitle && lineBreakOptions.lineBreaks.topicTitle.enabled) {
-            applyLineBreaksToCell(tbl.rows[rIndex].cells[1], lineBreakOptions.lineBreaks.topicTitle.character);
-        }
-        
-        tbl.rows[rIndex].cells[2].contents = topics[i].speaker;
-        if (lineBreakOptions.lineBreaks.topicSpeaker && lineBreakOptions.lineBreaks.topicSpeaker.enabled) {
-            applyLineBreaksToCell(tbl.rows[rIndex].cells[2], lineBreakOptions.lineBreaks.topicSpeaker.character);
-        }
+        var rIndex = startRowIndex + i;
+        // Safety checks
+        if (rIndex >= tbl.rows.length) break;
+        if (tbl.columns.length < 3) break;
+
+        // Time
+        try {
+            tbl.rows[rIndex].cells[0].contents = topics[i].time || "";
+            if (lineBreakOptions.lineBreaks.topicTime && lineBreakOptions.lineBreaks.topicTime.enabled) {
+                applyLineBreaksToCell(tbl.rows[rIndex].cells[0], lineBreakOptions.lineBreaks.topicTime.character);
+            }
+        } catch (e) {}
+
+        // Topic
+        try {
+            tbl.rows[rIndex].cells[1].contents = topics[i].title || "";
+            if (lineBreakOptions.lineBreaks.topicTitle && lineBreakOptions.lineBreaks.topicTitle.enabled) {
+                applyLineBreaksToCell(tbl.rows[rIndex].cells[1], lineBreakOptions.lineBreaks.topicTitle.character);
+            }
+        } catch (e) {}
+
+        // Speaker
+        try {
+            tbl.rows[rIndex].cells[2].contents = topics[i].speaker || "";
+            if (lineBreakOptions.lineBreaks.topicSpeaker && lineBreakOptions.lineBreaks.topicSpeaker.enabled) {
+                applyLineBreaksToCell(tbl.rows[rIndex].cells[2], lineBreakOptions.lineBreaks.topicSpeaker.character);
+            }
+        } catch (e) {}
     }
 }
 
@@ -1806,6 +2759,27 @@ function getDefaultSettings() {
         topicUnits: 'pt',
         topicApplyLineBreaks: true,
         topicLineBreakChar: '|',
+        // Styles (Phase 1 - paragraph styles only)
+        stylesOptions: {
+            table: {
+                tableStyle: '',
+                cellStyle: ''
+            },
+            session: {
+                titlePara: '',
+                timePara: '',
+                noPara: ''
+            },
+            chair: {
+                inlinePara: '',
+                gridPara: ''
+            },
+            topicsIndependent: {
+                timePara: '',
+                titlePara: '',
+                speakerPara: ''
+            }
+        },
         lineBreaks: {
             SessionTitle: { enabled: false, character: '|' },
             SessionTime: { enabled: false, character: '|' },
@@ -1996,7 +2970,7 @@ function exportReport(sessionsData) {
                     oversetErrors.push({
                         page: p + 1,
                         frame: itemLabel,
-                        location: "Page " + (p + 1) + ", " + itemLabel + " text frame"
+                        location: "Page " + (p+1) + ", " + itemLabel + " text frame"
                     });
                 }
                 
@@ -2175,6 +3149,285 @@ function exportReport(sessionsData) {
     return reportFile; // Return the file object for confirmation
 }
 
+// ===================== STYLES TAB (PHASE 1) =====================
+function setupStylesTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields) {
+    tab.alignChildren = 'fill';
+    tab.margins = [15, 15, 15, 15];
+
+    var paraStyles = getParagraphStyleNames();
+    var tableStyles = getTableStyleNames();
+    var cellStyles = getCellStyleNames();
+    var items = ['— None —'];
+    for (var i = 0; i < paraStyles.length; i++) items.push(paraStyles[i]);
+
+    var itemsTable = ['— None —'];
+    for (var ti = 0; ti < tableStyles.length; ti++) itemsTable.push(tableStyles[ti]);
+    var itemsCell = ['— None —'];
+    for (var ci = 0; ci < cellStyles.length; ci++) itemsCell.push(cellStyles[ci]);
+
+    var pnlDesc = tab.add('panel', undefined, 'Styles (Phase 1: Paragraph Styles)');
+    pnlDesc.margins = [15, 12, 15, 12];
+    var desc = pnlDesc.add('statictext', undefined, 'Choose paragraph styles to apply. Table/cell styles will be added in Phase 2.');
+    desc.maximumSize.width = 540;
+
+    // Session fields
+    var pnlSession = tab.add('panel', undefined, 'Session Fields');
+    pnlSession.alignChildren = 'fill';
+    pnlSession.margins = [15, 15, 15, 15];
+
+    var g1 = pnlSession.add('group'); g1.orientation = 'row'; g1.spacing = 10;
+    g1.add('statictext', undefined, 'Session Title:').preferredSize.width = 120;
+    var ddSessionTitle = g1.add('dropdownlist', undefined, items); ddSessionTitle.selection = 0;
+
+    var g2 = pnlSession.add('group'); g2.orientation = 'row'; g2.spacing = 10;
+    g2.add('statictext', undefined, 'Session Time:').preferredSize.width = 120;
+    var ddSessionTime = g2.add('dropdownlist', undefined, items); ddSessionTime.selection = 0;
+
+    var g3 = pnlSession.add('group'); g3.orientation = 'row'; g3.spacing = 10;
+    g3.add('statictext', undefined, 'Session No:').preferredSize.width = 120;
+    var ddSessionNo = g3.add('dropdownlist', undefined, items); ddSessionNo.selection = 0;
+
+    // Chairpersons
+    var pnlChair = tab.add('panel', undefined, 'Chairpersons');
+    pnlChair.alignChildren = 'fill';
+    pnlChair.margins = [15, 15, 15, 15];
+
+    var c1 = pnlChair.add('group'); c1.orientation = 'row'; c1.spacing = 10;
+    c1.add('statictext', undefined, 'Inline mode:').preferredSize.width = 120;
+    var ddChairInline = c1.add('dropdownlist', undefined, items); ddChairInline.selection = 0;
+
+    var c2 = pnlChair.add('group'); c2.orientation = 'row'; c2.spacing = 10;
+    c2.add('statictext', undefined, 'Grid mode:').preferredSize.width = 120;
+    var ddChairGrid = c2.add('dropdownlist', undefined, items); ddChairGrid.selection = 0;
+
+    // Topics (Table Layout)
+    var pnlTopicsTable = tab.add('panel', undefined, 'Topics (Table Layout)');
+    pnlTopicsTable.alignChildren = 'fill';
+    pnlTopicsTable.margins = [15, 15, 15, 15];
+
+    var tt1 = pnlTopicsTable.add('group'); tt1.orientation = 'row'; tt1.spacing = 10;
+    tt1.add('statictext', undefined, 'Table Style:').preferredSize.width = 120;
+    var ddTableStyle = tt1.add('dropdownlist', undefined, itemsTable); ddTableStyle.selection = 0;
+
+    var tt2 = pnlTopicsTable.add('group'); tt2.orientation = 'row'; tt2.spacing = 10;
+    tt2.add('statictext', undefined, 'Cell Style:').preferredSize.width = 120;
+    var ddCellStyle = tt2.add('dropdownlist', undefined, itemsCell); ddCellStyle.selection = 0;
+
+    // Topics (independent rows)
+    var pnlTopicsInd = tab.add('panel', undefined, 'Topics (Independent Rows)');
+    pnlTopicsInd.alignChildren = 'fill';
+    pnlTopicsInd.margins = [15, 15, 15, 15];
+
+    var t1 = pnlTopicsInd.add('group'); t1.orientation = 'row'; t1.spacing = 10;
+    t1.add('statictext', undefined, 'Time:').preferredSize.width = 120;
+    var ddTopicTime = t1.add('dropdownlist', undefined, items); ddTopicTime.selection = 0;
+
+    var t2 = pnlTopicsInd.add('group'); t2.orientation = 'row'; t2.spacing = 10;
+    t2.add('statictext', undefined, 'Title:').preferredSize.width = 120;
+    var ddTopicTitle = t2.add('dropdownlist', undefined, items); ddTopicTitle.selection = 0;
+
+    var t3 = pnlTopicsInd.add('group'); t3.orientation = 'row'; t3.spacing = 10;
+    t3.add('statictext', undefined, 'Speaker:').preferredSize.width = 120;
+    var ddTopicSpeaker = t3.add('dropdownlist', undefined, items); ddTopicSpeaker.selection = 0;
+
+    // Enable/disable based on available fields and layout
+    pnlTopicsInd.enabled = !!hasIndependentLayout;
+    pnlTopicsTable.enabled = !!hasTableLayout;
+    try {
+        if (availableFields) {
+            ddSessionTitle.enabled = !!availableFields['Session Title'];
+            ddSessionTime.enabled = !!availableFields['Session Time'];
+            ddSessionNo.enabled = !!availableFields['Session No'];
+        }
+    } catch (e) {}
+
+    // Store refs for collection/import
+    tab.ddSessionTitle = ddSessionTitle;
+    tab.ddSessionTime = ddSessionTime;
+    tab.ddSessionNo = ddSessionNo;
+    tab.ddChairInline = ddChairInline;
+    tab.ddChairGrid = ddChairGrid;
+    tab.ddTableStyle = ddTableStyle;
+    tab.ddCellStyle = ddCellStyle;
+    tab.ddTopicTime = ddTopicTime;
+    tab.ddTopicTitle = ddTopicTitle;
+    tab.ddTopicSpeaker = ddTopicSpeaker;
+
+    // Initialize from defaults
+    var s = defaultSettings.stylesOptions || {};
+    if (s.table) {
+        selectDropdownByText(ddTableStyle, s.table.tableStyle);
+        selectDropdownByText(ddCellStyle, s.table.cellStyle);
+    }
+    if (s.session) {
+        selectDropdownByText(ddSessionTitle, s.session.titlePara);
+        selectDropdownByText(ddSessionTime, s.session.timePara);
+        selectDropdownByText(ddSessionNo, s.session.noPara);
+    }
+    if (s.chair) {
+        selectDropdownByText(ddChairInline, s.chair.inlinePara);
+        selectDropdownByText(ddChairGrid, s.chair.gridPara);
+    }
+    if (s.topicsIndependent) {
+        selectDropdownByText(ddTopicTime, s.topicsIndependent.timePara);
+        selectDropdownByText(ddTopicTitle, s.topicsIndependent.titlePara);
+        selectDropdownByText(ddTopicSpeaker, s.topicsIndependent.speakerPara);
+    }
+
+    // ----- Create New Style (UI) -----
+    var pnlCreate = tab.add('panel', undefined, 'Create New Style');
+    pnlCreate.alignChildren = 'left';
+    pnlCreate.margins = [15, 15, 15, 15];
+
+    var grpRow1 = pnlCreate.add('group'); grpRow1.orientation = 'row'; grpRow1.spacing = 10;
+    grpRow1.add('statictext', undefined, 'Name:').preferredSize.width = 60;
+    var etStyleName = grpRow1.add('edittext', undefined, '');
+    etStyleName.characters = 25;
+    grpRow1.add('statictext', undefined, 'Type:').preferredSize.width = 40;
+    var ddStyleType = grpRow1.add('dropdownlist', undefined, ['Paragraph', 'Table', 'Cell']);
+    ddStyleType.selection = 0;
+    var btnCreateStyle = grpRow1.add('button', undefined, 'Create');
+
+    // Helper: refresh all dropdowns from current doc styles. If newName provided, auto-select where applicable
+    function refreshStyleDropdowns(newName, newType) {
+        try {
+            // Rebuild paragraph items
+            var pNames = getParagraphStyleNames();
+            var pItems = ['— None —'];
+            for (var i = 0; i < pNames.length; i++) pItems.push(pNames[i]);
+
+            function repop(dd, itemsArr, targetName) {
+                if (!dd) return;
+                var prev = (dd.selection && dd.selection.text) ? dd.selection.text : '';
+                dd.removeAll();
+                for (var j = 0; j < itemsArr.length; j++) dd.add('item', itemsArr[j]);
+                // Restore selection or select targetName
+                var want = targetName || prev;
+                selectDropdownByText(dd, want);
+            }
+
+            repop(ddSessionTitle, pItems, newType === 'Paragraph' ? newName : null);
+            repop(ddSessionTime, pItems, null);
+            repop(ddSessionNo, pItems, null);
+            repop(ddChairInline, pItems, null);
+            repop(ddChairGrid, pItems, null);
+            repop(ddTopicTime, pItems, null);
+            repop(ddTopicTitle, pItems, null);
+            repop(ddTopicSpeaker, pItems, null);
+
+            // Rebuild table style items
+            var tNames = getTableStyleNames();
+            var tItems = ['— None —'];
+            for (var k = 0; k < tNames.length; k++) tItems.push(tNames[k]);
+            repop(ddTableStyle, tItems, newType === 'Table' ? newName : null);
+
+            // Rebuild cell style items
+            var cNames = getCellStyleNames();
+            var cItems = ['— None —'];
+            for (var m = 0; m < cNames.length; m++) cItems.push(cNames[m]);
+            repop(ddCellStyle, cItems, newType === 'Cell' ? newName : null);
+        } catch (e) {}
+    }
+
+    // Create button handler
+    btnCreateStyle.onClick = function() {
+        var name = trimES(etStyleName.text);
+        if (!name) { alert('Please enter a style name.'); return; }
+        var type = (ddStyleType.selection && ddStyleType.selection.text) ? ddStyleType.selection.text : 'Paragraph';
+        try {
+            if (type === 'Paragraph') {
+                createParagraphStyleIfMissing(name, { pointSize: 10, leading: 12 });
+            } else if (type === 'Table') {
+                // Try to reference body cell if exists
+                var bodyCandidates = getCellStyleNames();
+                var bodyName = bodyCandidates.length > 0 ? bodyCandidates[0] : undefined;
+                var doc = app.activeDocument;
+                var bodyCS = bodyName ? doc.cellStyles.itemByName(bodyName) : null;
+                createTableStyleIfMissing(name, { bodyRegionCellStyle: (bodyCS && bodyCS.isValid) ? bodyCS : undefined });
+            } else if (type === 'Cell') {
+                createCellStyleIfMissing(name, { topInset: 1, bottomInset: 1, leftInset: 1, rightInset: 1 });
+            }
+            refreshStyleDropdowns(name, type);
+            // Auto-select a sensible default dropdown for the created type
+            if (type === 'Paragraph') {
+                selectDropdownByText(ddSessionTitle, name);
+            } else if (type === 'Table') {
+                selectDropdownByText(ddTableStyle, name);
+            } else if (type === 'Cell') {
+                selectDropdownByText(ddCellStyle, name);
+            }
+            etStyleName.text = '';
+        } catch (e) { alert('Failed to create style: ' + e); }
+    };
+}
+
+function updateStylesTabFromSettings(tab, stylesOptions, hasIndependentLayout, hasTableLayout, availableFields) {
+    if (!tab || !stylesOptions) return;
+    try {
+        if (stylesOptions.table) {
+            selectDropdownByText(tab.ddTableStyle, stylesOptions.table.tableStyle);
+            selectDropdownByText(tab.ddCellStyle, stylesOptions.table.cellStyle);
+        }
+        if (stylesOptions.session) {
+            selectDropdownByText(tab.ddSessionTitle, stylesOptions.session.titlePara);
+            selectDropdownByText(tab.ddSessionTime, stylesOptions.session.timePara);
+            selectDropdownByText(tab.ddSessionNo, stylesOptions.session.noPara);
+        }
+        if (stylesOptions.chair) {
+            selectDropdownByText(tab.ddChairInline, stylesOptions.chair.inlinePara);
+            selectDropdownByText(tab.ddChairGrid, stylesOptions.chair.gridPara);
+        }
+        if (stylesOptions.topicsIndependent) {
+            selectDropdownByText(tab.ddTopicTime, stylesOptions.topicsIndependent.timePara);
+            selectDropdownByText(tab.ddTopicTitle, stylesOptions.topicsIndependent.titlePara);
+            selectDropdownByText(tab.ddTopicSpeaker, stylesOptions.topicsIndependent.speakerPara);
+        }
+        if (tab.ddTopicTime) {
+            var enableInd = !!hasIndependentLayout;
+            tab.ddTopicTime.enabled = enableInd;
+            tab.ddTopicTitle.enabled = enableInd;
+            tab.ddTopicSpeaker.enabled = enableInd;
+        }
+        if (tab.ddTableStyle) {
+            var enableTbl = !!hasTableLayout;
+            tab.ddTableStyle.enabled = enableTbl;
+            tab.ddCellStyle.enabled = enableTbl;
+        }
+        if (availableFields) {
+            if (tab.ddSessionTitle) tab.ddSessionTitle.enabled = !!availableFields['Session Title'];
+            if (tab.ddSessionTime) tab.ddSessionTime.enabled = !!availableFields['Session Time'];
+            if (tab.ddSessionNo) tab.ddSessionNo.enabled = !!availableFields['Session No'];
+        }
+    } catch (e) {}
+}
+
+function getParagraphStyleNames() {
+    var names = [];
+    try {
+        var doc = app.activeDocument;
+        var arr = doc.allParagraphStyles ? doc.allParagraphStyles : doc.paragraphStyles;
+        for (var i = 0; i < arr.length; i++) {
+            try {
+                var nm = arr[i].name;
+                if (!nm) continue;
+                if (nm.charAt(0) === '[') continue; // Skip [No Paragraph Style], [Basic Paragraph]
+                if (indexOfExact(names, nm) === -1) names.push(nm);
+            } catch (ignore) {}
+        }
+    } catch (e) {}
+    names.sort();
+    return names;
+}
+
+function selectDropdownByText(dd, text) {
+    if (!dd) return;
+    if (!text || text === '') { dd.selection = 0; return; }
+    for (var i = 0; i < dd.items.length; i++) {
+        if (dd.items[i].text === text) { dd.selection = i; return; }
+    }
+    dd.selection = 0;
+}
+
 /* --------------- RUN --------------- */
 
 try {
@@ -2236,5 +3489,89 @@ function copyDocumentSettings(sourceDoc, targetDoc) {
     } catch (e) {
         $.writeln("Warning: Could not copy all document settings: " + e);
         $.writeln("Error details: " + e.message);
+    }
+}
+
+/* ---------------- MASTER (PARENT) SPREAD HANDLING ---------------- */
+
+// Copy all master spreads from source to target document.
+// Returns a map: { masterName: MasterSpread-in-target }
+function copyMasterSpreads(sourceDoc, targetDoc) {
+    var map = {};
+    try {
+        var srcMasters = sourceDoc.masterSpreads;
+        for (var i = 0; i < srcMasters.length; i++) {
+            var src = srcMasters[i];
+            var name = "";
+            try { name = src.name; } catch (eName) { name = "" + i; }
+
+            var duplicated = null;
+            try {
+                // Primary attempt: duplicate master into target document
+                duplicated = src.duplicate(LocationOptions.AT_END, targetDoc);
+            } catch (e1) {
+                $.writeln("Master duplicate failed for '" + name + "' -> " + e1);
+            }
+
+            if (!duplicated) {
+                try {
+                    // Fallback: if duplication signature differs, try duplicating after last master
+                    duplicated = src.duplicate(LocationOptions.AFTER, targetDoc.masterSpreads.lastItem());
+                } catch (e2) {
+                    $.writeln("Master duplicate (fallback) failed for '" + name + "' -> " + e2);
+                }
+            }
+
+            if (!duplicated) {
+                // Final fallback: try to reference by name if already present (avoid duplicates)
+                try {
+                    duplicated = targetDoc.masterSpreads.itemByName(name);
+                    if (!duplicated.isValid) duplicated = null;
+                } catch (e3) { duplicated = null; }
+            }
+
+            if (duplicated) {
+                map[name] = duplicated;
+            }
+        }
+        $.writeln("Copied " + (function(){var c=0; for (var k in map) c++; return c;})() + " master spreads to target document.");
+    } catch (e) {
+        $.writeln("Warning: Failed while copying master spreads: " + e);
+    }
+    return map;
+}
+
+// Apply masters to targetDoc pages based on the corresponding template pages.
+// Assumes the first N pages in targetDoc correspond to sourceDoc.pages after initial cleanup.
+function applyMastersToPages(sourceDoc, targetDoc, masterMap) {
+    try {
+        var n = Math.min(sourceDoc.pages.length, targetDoc.pages.length);
+        for (var i = 0; i < n; i++) {
+            var srcPage = sourceDoc.pages[i];
+            var tgtPage = targetDoc.pages[i];
+            try {
+                var srcMaster = srcPage.appliedMaster;
+                if (srcMaster) {
+                    var name = "";
+                    try { name = srcMaster.name; } catch (eName) { name = ""; }
+                    var tgtMaster = masterMap && masterMap[name] ? masterMap[name] : null;
+                    if (!tgtMaster) {
+                        // Try to find by name on demand
+                        try {
+                            var candidate = targetDoc.masterSpreads.itemByName(name);
+                            if (candidate && candidate.isValid) tgtMaster = candidate;
+                        } catch (eFind) {}
+                    }
+                    if (tgtMaster) {
+                        tgtPage.appliedMaster = tgtMaster;
+                    }
+                }
+            } catch (inner) {
+                // Continue with next page
+            }
+        }
+        $.writeln("Applied masters to initial duplicated pages.");
+    } catch (e) {
+        $.writeln("Warning: Could not apply masters to pages: " + e);
     }
 }

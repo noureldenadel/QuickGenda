@@ -32,14 +32,22 @@ v2.0
 //  remove profiles
 // fix initial panel size
 // name change: ClickGenda QuickGend UltraGenda ClickAgenda Autogenda, ProGenda, agendaflow+
-
-
-
-
-
-
 //  test all tabs features
-//  option to add optional style to beaklines and if there is no styles assigned it will generate one for each placeholder with name like the csv placeholder
+//  Use a standardized spacing system (8px increments)
+//  code refactoring for the units feature
+// copy document setup info
+//  remove all unnessacry in drop list 
+// auto detect the style used
+// make the tab smart also hide elements that they arent in the csv with and remove its gap
+// the defult satae for drop list should be with this piririty: if it has style assigned to it, then it should be selected it no style then non is selected
+
+
+// --none-- shouldent reset the style it should preserve the elemnt styling but dont add it as a style only
+//  option to add paragraph style to the beaked line element. example the first style will be for all the text place holder the second style will be applied for the pragraph after the breakline
+
+
+
+
 //  Phase 5: Add advanced features (column-specific styles, style preview + breaklines stylings)
     Phase 3 – Per-Column Styling
     🔲 Detect number of CSV columns.
@@ -60,16 +68,13 @@ v2.0
 
 
 
-
 Section Dropdown Checkboxes text input field panel section scroll list  radio btn
 header p style > header Cell style
 topics p style > topics Cell style > Topics Table style
 
 
 
-
-
-
+// auto detect created sessions and updated needed only if text changed, image, chair person added or removed session added or reve
 
 
 
@@ -94,3 +99,76 @@ topicsTopic
 topicsSpeaker
 chairAvatar
 chairFlag
+
+
+
+
+
+
+
+
+
+
+
+🔹 Session-Level Update Logic
+Identify sessions in existing document
+Each session page has a hidden label like:
+page.label = JSON.stringify({id: "S01", title: "Heart Surgery", chairs: [...], topics: [...]})
+id could be "Session No" if it’s stable, otherwise "Session Title" + something else.
+Parse new CSV into session objects
+Example: {id: "S01", title: "Heart Surgery", chairs: [...], topics: [...]}
+Compare session lists
+If a session exists in both old and new → update it.
+If a session exists only in old → remove its page.
+If a session exists only in new → create a new page from template.
+If overall order changed → reorder session pages to match new CSV order.
+🔹 Inside Each Session Page
+For each matching session:
+1. Text fields (title, time, number)
+Compare old.title vs. new.title.
+If different → frame.contents = new.title.
+(No frame replacement, so formatting stays intact.)
+2. Chairpersons
+Compare old.chairs array vs. new.chairs array.
+If identical → skip.
+If different → re-run chair layout routine (inline or grid).
+If image placement is enabled → check new chairs, place/update images.
+3. Topics
+Compare topic lists (old.topics vs. new.topics).
+If same number, same order, same text → skip.
+If text differs → update text inside cells/frames.
+If topics added → insert new row(s) or duplicate topic group template.
+If topics removed → delete the row(s)/group(s).
+If order changed → move rows/groups to new positions.
+4. Images
+For each chair/topic with image:
+Compare old imageStatus vs. new file existence.
+If different (new file appeared, or file missing now) → refresh the link in its frame.
+🔹 After Updates
+Save updated session metadata back into labels:
+Update page.label with new session object.
+Example: page.label = JSON.stringify(newSessionData).
+Generate an update report (optional but very helpful):
+Sessions updated
+Sessions added/removed
+Topics added/removed/reordered
+Images updated/missing
+🔹 Pseudocode Summary
+for each newSession in newCSV:
+    if sessionID exists in document:
+        page = findPageBySessionID(sessionID)
+        oldSession = JSON.parse(page.label)
+        if oldSession.title != newSession.title:
+            updateTextFrame(page, "sessionTitle", newSession.title)
+        if oldSession.chairs != newSession.chairs:
+            updateChairs(page, newSession.chairs)
+        compareTopicsAndUpdate(page, oldSession.topics, newSession.topics)
+        checkAndUpdateImages(page, newSession.chairs)
+        page.label = JSON.stringify(newSession) // refresh metadata
+    else:
+        createNewSessionPage(newSession)
+for each oldSession not in newCSV:
+    removePageForSession(oldSession)
+reorderPagesToMatchCSV(newCSV.sessionOrder)
+This is the logic skeleton.
+The “secret sauce” is the metadata labeling (using .label on pages or groups) so the script can remember what was last imported. Without that, the script has no way to know what’s “old” vs. “new.”

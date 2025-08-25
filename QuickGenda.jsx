@@ -133,7 +133,7 @@ var SCRIPT_VERSION = "v2.0 (August 22, 2025)";
 
 // ===================== FORMATTING TAB (COMBINED) =====================
 // Top-level definition so it is available to getUnifiedSettingsPanel
-function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields) {
+function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields, detectedTemplateStyles) {
     tab.alignChildren = 'fill';
     tab.margins = [15, 15, 15, 15];
 
@@ -143,19 +143,31 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
             var ps = app.activeDocument.paragraphStyles;
             for (var i = 0; i < ps.length; i++) {
                 var nm = ps[i].name;
-                if (nm && nm !== '[Basic Paragraph]') names.push(nm);
+                if (nm && nm.charAt(0) !== '[') names.push(nm);
             }
         } catch (e) {}
         return names;
     }
     function getTableStyleNames() {
         var names = ['— None —'];
-        try { var ts = app.activeDocument.tableStyles; for (var i=0;i<ts.length;i++) names.push(ts[i].name); } catch(e) {}
+        try { 
+            var ts = app.activeDocument.tableStyles; 
+            for (var i=0;i<ts.length;i++) {
+                var nm = ts[i].name;
+                if (nm && nm.charAt(0) !== '[') names.push(nm);
+            }
+        } catch(e) {}
         return names;
     }
     function getCellStyleNames() {
         var names = ['— None —'];
-        try { var cs = app.activeDocument.cellStyles; for (var i=0;i<cs.length;i++) names.push(cs[i].name); } catch(e) {}
+        try { 
+            var cs = app.activeDocument.cellStyles; 
+            for (var i=0;i<cs.length;i++) {
+                var nm = cs[i].name;
+                if (nm && nm.charAt(0) !== '[') names.push(nm);
+            }
+        } catch(e) {}
         return names;
     }
 
@@ -163,42 +175,109 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 8; grp.alignChildren = 'left';
         var st = grp.add('statictext', undefined, labelText); st.preferredSize.width = 80;
         var dd = grp.add('dropdownlist', undefined, ddItems); dd.preferredSize.width = 220;
-        if (preselectText) {
-            for (var i=0;i<dd.items.length;i++){ if (dd.items[i].text === preselectText){ dd.selection = i; break; } }
-        } else { dd.selection = 0; }
+        
+        // Debug logging for style selection
+        $.writeln("[DEBUG] addStyleRow - Label: '" + labelText + "', preselectText: '" + preselectText + "'");
+        $.writeln("[DEBUG] Available items in dropdown: [" + ddItems.join(', ') + "]");
+        
+        // Priority-based selection: detected style > "— None —"
+        var selectionMade = false;
+        if (preselectText && preselectText !== null && preselectText !== '') {
+            // Try to find and select the detected/preset style
+            for (var i = 0; i < dd.items.length; i++) {
+                $.writeln("[DEBUG] Checking item " + i + ": '" + dd.items[i].text + "' vs preselectText: '" + preselectText + "'");
+                if (dd.items[i].text === preselectText) {
+                    dd.selection = i;
+                    selectionMade = true;
+                    $.writeln("[DEBUG] MATCH FOUND! Selected item " + i + ": '" + dd.items[i].text + "'");
+                    break;
+                }
+            }
+        }
+        
+        // If no style was selected (either no preselectText or style not found), select "— None —"
+        if (!selectionMade) {
+            dd.selection = 0; // "— None —" is always at index 0
+            $.writeln("[DEBUG] No match found, defaulting to '— None —' (index 0)");
+        }
+        
         return { group: grp, label: st, dropdown: dd };
     }
     function addBreakControlsInline(parent, defaultEnabled, defaultChar) {
         var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 6; grp.alignChildren = 'left';
+        // Add little space before the checkbox
+        grp.add('statictext', undefined, '   '); // Small spacer
         var cb = grp.add('checkbox', undefined, ''); cb.value = !!defaultEnabled;
         var et = grp.add('edittext', undefined, (defaultChar || '|')); et.characters = 4;
-        var arrow = grp.add('statictext', undefined, '-> ¶');
+        grp.add('statictext', undefined, '-> ¶');
         return { group: grp, checkbox: cb, charInput: et };
     }
+
+    // Use the detected styles from the original template document
+    var detectedStyles = detectedTemplateStyles || {
+        sessionTitle: null,
+        sessionTime: null,
+        sessionNo: null,
+        chairStyle: null,
+        topicTime: null,
+        topicTitle: null,
+        topicSpeaker: null,
+        tableStyle: null,
+        cellStyle: null
+    };
+    
+    // Debug logging for detected template styles
+    $.writeln("\n=== DETECTED TEMPLATE STYLES DEBUG ====");
+    $.writeln("detectedTemplateStyles parameter: " + (detectedTemplateStyles ? "[object]" : "null/undefined"));
+    if (detectedTemplateStyles) {
+        $.writeln("sessionTitle: '" + detectedTemplateStyles.sessionTitle + "'");
+        $.writeln("sessionTime: '" + detectedTemplateStyles.sessionTime + "'");
+        $.writeln("sessionNo: '" + detectedTemplateStyles.sessionNo + "'");
+        $.writeln("chairStyle: '" + detectedTemplateStyles.chairStyle + "'");
+        $.writeln("topicTime: '" + detectedTemplateStyles.topicTime + "'");
+        $.writeln("topicTitle: '" + detectedTemplateStyles.topicTitle + "'");
+        $.writeln("topicSpeaker: '" + detectedTemplateStyles.topicSpeaker + "'");
+        $.writeln("tableStyle: '" + detectedTemplateStyles.tableStyle + "'");
+        $.writeln("cellStyle: '" + detectedTemplateStyles.cellStyle + "'");
+    }
+    $.writeln("Final detectedStyles object:");
+    $.writeln("sessionTitle: '" + detectedStyles.sessionTitle + "'");
+    $.writeln("sessionTime: '" + detectedStyles.sessionTime + "'");
+    $.writeln("sessionNo: '" + detectedStyles.sessionNo + "'");
+    $.writeln("chairStyle: '" + detectedStyles.chairStyle + "'");
+    $.writeln("topicTime: '" + detectedStyles.topicTime + "'");
+    $.writeln("topicTitle: '" + detectedStyles.topicTitle + "'");
+    $.writeln("topicSpeaker: '" + detectedStyles.topicSpeaker + "'");
+    $.writeln("tableStyle: '" + detectedStyles.tableStyle + "'");
+    $.writeln("cellStyle: '" + detectedStyles.cellStyle + "'");
+    $.writeln("=== END DETECTED TEMPLATE STYLES DEBUG ====");
 
     // Session Fields
     var pnlSession = tab.add('panel', undefined, 'Session Fields');
     pnlSession.margins = [15, 15, 15, 15]; pnlSession.alignChildren = 'left';
     var paraItems = getParagraphStyleNames();
 
-    var rowTitle = addStyleRow(pnlSession, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.titlePara : null);
+    var rowTitle = addStyleRow(pnlSession, 'Title:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.titlePara : detectedStyles.sessionTitle);
     var brTitle = addBreakControlsInline(rowTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].character : '|');
 
-    var rowTime = addStyleRow(pnlSession, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.timePara : null);
+    var rowTime = addStyleRow(pnlSession, 'Time:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.timePara : detectedStyles.sessionTime);
     var brTime = addBreakControlsInline(rowTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].character : '|');
 
-    var rowNo = addStyleRow(pnlSession, 'Number:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.noPara : null);
+    var rowNo = addStyleRow(pnlSession, 'Number:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.noPara : detectedStyles.sessionNo);
     var brNo = addBreakControlsInline(rowNo.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].character : '|');
 
     // Chairpersons
     var pnlChair = tab.add('panel', undefined, 'Chairpersons');
     pnlChair.margins = [15, 15, 15, 15]; pnlChair.alignChildren = 'left';
-    var rowChairInline = addStyleRow(pnlChair, 'Style (Inline):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.inlinePara : null);
-    var rowChairGrid = addStyleRow(pnlChair, 'Style (Grid):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.gridPara : null);
-    var brChair = addBreakControlsInline(rowChairInline.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].enabled : false,
+    var rowChair = addStyleRow(pnlChair, 'Style:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.style : detectedStyles.chairStyle);
+    var brChair = addBreakControlsInline(rowChair.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].character : '||');
 
     // Topics
@@ -206,65 +285,221 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     pnlTopics.margins = [15, 15, 15, 15]; pnlTopics.alignChildren = 'left';
     var tableItems = getTableStyleNames();
     var cellItems = getCellStyleNames();
-    var rowTbl = addStyleRow(pnlTopics, 'Table:', tableItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.tableStyle : null);
-    var rowCell = addStyleRow(pnlTopics, 'Cells:', cellItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.cellStyle : null);
+    var rowTbl = addStyleRow(pnlTopics, 'Table:', tableItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.tableStyle : detectedStyles.tableStyle);
+    var rowCell = addStyleRow(pnlTopics, 'Cells:', cellItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.cellStyle : detectedStyles.cellStyle);
 
-    var rowTopicTime = addStyleRow(pnlTopics, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.timePara : null);
+    var rowTopicTime = addStyleRow(pnlTopics, 'Time:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.timePara : detectedStyles.topicTime);
     var brTopicTime = addBreakControlsInline(rowTopicTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].character : '|');
 
-    var rowTopicTitle = addStyleRow(pnlTopics, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.titlePara : null);
+    var rowTopicTitle = addStyleRow(pnlTopics, 'Title:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.titlePara : detectedStyles.topicTitle);
     var brTopicTitle = addBreakControlsInline(rowTopicTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].character : '|');
 
-    var rowTopicSpeaker = addStyleRow(pnlTopics, 'Speaker:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : null);
+    var rowTopicSpeaker = addStyleRow(pnlTopics, 'Speaker:', paraItems, 
+        defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : detectedStyles.topicSpeaker);
     var brTopicSpeaker = addBreakControlsInline(rowTopicSpeaker.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].character : '|');
 
-    // Inline Create New Style controls
-    var grpNew = tab.add('group'); grpNew.alignment = 'left'; grpNew.spacing = 8;
-    grpNew.add('statictext', undefined, 'New Style:');
-    var etNewName = grpNew.add('edittext', undefined, ''); etNewName.characters = 20;
-    var ddNewType = grpNew.add('dropdownlist', undefined, ['Paragraph','Table','Cell']); ddNewType.selection = 0;
-    var btnCreate = grpNew.add('button', undefined, 'Create');
+    // Create New Style - Inline controls instead of dialog
+    var pnlNewStyle = tab.add('panel', undefined, 'Create New Style');
+    pnlNewStyle.alignChildren = 'left';
+    pnlNewStyle.margins = [15, 15, 15, 15];
+    
+    var grpNewStyle = pnlNewStyle.add('group'); 
+    grpNewStyle.orientation = 'row'; 
+    grpNewStyle.spacing = 10;
+    grpNewStyle.alignChildren = 'left';
+    
+    grpNewStyle.add('statictext', undefined, 'Name:').preferredSize.width = 50;
+    var etNewStyleName = grpNewStyle.add('edittext', undefined, ''); 
+    etNewStyleName.characters = 20;
+    
+    grpNewStyle.add('statictext', undefined, 'Type:').preferredSize.width = 35;
+    var ddNewStyleType = grpNewStyle.add('dropdownlist', undefined, ['Paragraph', 'Table', 'Cell']); 
+    ddNewStyleType.selection = 0;
+    ddNewStyleType.preferredSize.width = 100;
+    
+    var btnCreate = grpNewStyle.add('button', undefined, 'Create');
+    btnCreate.preferredSize.width = 70;
+    
     btnCreate.onClick = function() {
+        var name = etNewStyleName.text;
+        if (!name || name === '') {
+            alert('Please enter a style name.');
+            return;
+        }
+        var type = ddNewStyleType.selection.text;
         try {
-            var name = etNewName.text;
-            var type = ddNewType && ddNewType.selection ? ddNewType.selection.text : 'Paragraph';
-            if (!name || name === '') return;
-            if (type === 'Paragraph') { app.activeDocument.paragraphStyles.add({name:name}); }
-            else if (type === 'Table') { app.activeDocument.tableStyles.add({name:name}); }
-            else { app.activeDocument.cellStyles.add({name:name}); }
-            etNewName.text = '';
-        } catch (e) { alert('Failed to create style: ' + e); }
-        // repopulate dropdowns
-        var pItems = getParagraphStyleNames(); var tItems = getTableStyleNames(); var cItems = getCellStyleNames();
-        function repop(dd, items){ if (!dd) return; var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null; dd.removeAll(); for (var i=0;i<items.length;i++) dd.add('item', items[i]); dd.selection = sel ? (function(){ for (var j=0;j<dd.items.length;j++){ if(dd.items[j].text===sel) return j;} return 0;})() : 0; }
-        repop(rowTitle.dropdown, pItems); repop(rowTime.dropdown, pItems); repop(rowNo.dropdown, pItems);
-        repop(rowChairInline.dropdown, pItems); repop(rowChairGrid.dropdown, pItems);
-        repop(rowTopicTime.dropdown, pItems); repop(rowTopicTitle.dropdown, pItems); repop(rowTopicSpeaker.dropdown, pItems);
-        repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems);
+            if (type === 'Paragraph') { 
+                app.activeDocument.paragraphStyles.add({name: name}); 
+            } else if (type === 'Table') { 
+                app.activeDocument.tableStyles.add({name: name}); 
+            } else { 
+                app.activeDocument.cellStyles.add({name: name}); 
+            }
+            etNewStyleName.text = '';
+            
+            // repopulate dropdowns
+            var pItems = getParagraphStyleNames(); var tItems = getTableStyleNames(); var cItems = getCellStyleNames();
+            function repop(dd, items){ 
+                if (!dd) return; 
+                var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null; 
+                dd.removeAll(); 
+                for (var i=0;i<items.length;i++) dd.add('item', items[i]); 
+                dd.selection = sel ? (function(){ 
+                    for (var j=0;j<dd.items.length;j++){ 
+                        if(dd.items[j].text===sel) return j;
+                    } 
+                    return 0;
+                })() : 0; 
+            }
+            repop(rowTitle.dropdown, pItems); repop(rowTime.dropdown, pItems); repop(rowNo.dropdown, pItems);
+            repop(rowChair.dropdown, pItems);  // Updated to use single chair dropdown
+            repop(rowTopicTime.dropdown, pItems); repop(rowTopicTitle.dropdown, pItems); repop(rowTopicSpeaker.dropdown, pItems);
+            repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems);
+            
+            // Auto-select the newly created style in an appropriate dropdown
+            if (type === 'Paragraph' && rowTitle.dropdown) {
+                for (var k = 0; k < rowTitle.dropdown.items.length; k++) {
+                    if (rowTitle.dropdown.items[k].text === name) {
+                        rowTitle.dropdown.selection = k;
+                        break;
+                    }
+                }
+            }
+        } catch (e) { 
+            alert('Failed to create style: ' + e); 
+        }
     };
 
-    // Hide rows based on CSV availability
+    // Smart hiding of elements based on CSV availability and layout capabilities
+    // Helper functions for proper gap-free layout management
+    function forceRelayout(ctrl) {
+        try {
+            var root = ctrl;
+            // climb to top-most parent (Window)
+            while (root && root.parent) root = root.parent;
+            if (root && root.layout) {
+                root.layout.layout(true);
+                root.layout.resize();
+                // extra layout pass to stabilize
+                root.layout.layout(true);
+            }
+            if (typeof root.update === 'function') root.update();
+        } catch (e) {}
+    }
+    function ensureCollapsible(panel) { 
+        try { if (panel && panel.minimumSize) panel.minimumSize.height = 0; } catch (e) {} 
+    }
+    function setCollapsed(panel, collapsed) {
+        try {
+            if (!panel) return;
+            if (collapsed) {
+                if (panel.minimumSize) panel.minimumSize.height = 0;
+                if (panel.maximumSize) panel.maximumSize.height = 0;
+                panel.visible = false;
+            } else {
+                if (panel.maximumSize) panel.maximumSize.height = 10000;
+                panel.visible = true;
+            }
+        } catch (e) {}
+    }
+    
+    // Prepare all elements for potential collapsing
+    ensureCollapsible(rowTitle.group);
+    ensureCollapsible(rowTime.group);
+    ensureCollapsible(rowNo.group);
+    ensureCollapsible(pnlSession);
+    ensureCollapsible(pnlChair);
+    ensureCollapsible(rowTbl.group);
+    ensureCollapsible(rowCell.group);
+    ensureCollapsible(rowTopicTime.group);
+    ensureCollapsible(rowTopicTitle.group);
+    ensureCollapsible(rowTopicSpeaker.group);
+    ensureCollapsible(pnlTopics);
+    // Also prepare line break control groups
+    ensureCollapsible(brTitle.group);
+    ensureCollapsible(brTime.group);
+    ensureCollapsible(brNo.group);
+    ensureCollapsible(brChair.group);
+    ensureCollapsible(brTopicTime.group);
+    ensureCollapsible(brTopicTitle.group);
+    ensureCollapsible(brTopicSpeaker.group);
+    
     try {
         if (availableFields) {
-            if (!availableFields['Session Title']) { rowTitle.group.visible = false; brTitle.group.visible = false; }
-            if (!availableFields['Session Time']) { rowTime.group.visible = false; brTime.group.visible = false; }
-            if (!availableFields['Session No']) { rowNo.group.visible = false; brNo.group.visible = false; }
-            if (!availableFields['Chairpersons']) { pnlChair.visible = false; }
-            if (!availableFields['Time']) { rowTopicTime.group.visible = false; brTopicTime.group.visible = false; }
-            if (!availableFields['Topic Title']) { rowTopicTitle.group.visible = false; brTopicTitle.group.visible = false; }
-            if (!availableFields['Speaker']) { rowTopicSpeaker.group.visible = false; brTopicSpeaker.group.visible = false; }
+            // Hide individual session fields that aren't in CSV
+            if (!availableFields['Session Title']) { 
+                setCollapsed(rowTitle.group, true); 
+                setCollapsed(brTitle.group, true); 
+            }
+            if (!availableFields['Session Time']) { 
+                setCollapsed(rowTime.group, true); 
+                setCollapsed(brTime.group, true); 
+            }
+            if (!availableFields['Session No']) { 
+                setCollapsed(rowNo.group, true); 
+                setCollapsed(brNo.group, true); 
+            }
+            
+            // Hide entire Session panel if no session fields are available
+            var hasAnySessionField = availableFields['Session Title'] || availableFields['Session Time'] || availableFields['Session No'];
+            if (!hasAnySessionField) { setCollapsed(pnlSession, true); }
+            
+            // Hide Chairpersons panel if not in CSV
+            if (!availableFields['Chairpersons']) { setCollapsed(pnlChair, true); }
+            
+            // Hide individual topic fields that aren't in CSV
+            if (!availableFields['Time']) { 
+                setCollapsed(rowTopicTime.group, true); 
+                setCollapsed(brTopicTime.group, true); 
+            }
+            if (!availableFields['Topic Title']) { 
+                setCollapsed(rowTopicTitle.group, true); 
+                setCollapsed(brTopicTitle.group, true); 
+            }
+            if (!availableFields['Speaker']) { 
+                setCollapsed(rowTopicSpeaker.group, true); 
+                setCollapsed(brTopicSpeaker.group, true); 
+            }
         }
+        
+        // Hide topics modes based on template layout capabilities
+        if (!hasTableLayout) { 
+            setCollapsed(rowTbl.group, true); 
+            setCollapsed(rowCell.group, true); 
+        }
+        if (!hasIndependentLayout) { 
+            setCollapsed(rowTopicTime.group, true); 
+            setCollapsed(brTopicTime.group, true);
+            setCollapsed(rowTopicTitle.group, true); 
+            setCollapsed(brTopicTitle.group, true);
+            setCollapsed(rowTopicSpeaker.group, true); 
+            setCollapsed(brTopicSpeaker.group, true);
+        }
+        
+        // Hide entire Topics panel if no topic-related fields are available or no layout is supported
+        var hasTopicFields = availableFields && (availableFields['Time'] || availableFields['Topic Title'] || availableFields['Speaker']);
+        var hasAnyTopicLayout = hasTableLayout || hasIndependentLayout;
+        if (!hasTopicFields || !hasAnyTopicLayout) { 
+            setCollapsed(pnlTopics, true); 
+        }
+        
+        // Force comprehensive layout update to remove all gaps
+        forceRelayout(tab);
+        
     } catch (e) {}
 
     // Expose properties so existing collectors work
     tab.ddSessionTitle = rowTitle.dropdown;
     tab.ddSessionTime = rowTime.dropdown;
     tab.ddSessionNo = rowNo.dropdown;
-    tab.ddChairInline = rowChairInline.dropdown;
-    tab.ddChairGrid = rowChairGrid.dropdown;
+    tab.ddChair = rowChair.dropdown;
     tab.ddTableStyle = rowTbl.dropdown;
     tab.ddCellStyle = rowCell.dropdown;
     tab.ddTopicTime = rowTopicTime.dropdown;
@@ -292,162 +527,23 @@ function main() {
         return;
     }
 
-// ===================== FORMATTING TAB (COMBINED) =====================
-function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields) {
-    tab.alignChildren = 'fill';
-    tab.margins = [15, 15, 15, 15];
-
-    function getParagraphStyleNames() {
-        var names = ['— None —'];
-        try {
-            var ps = app.activeDocument.paragraphStyles;
-            for (var i = 0; i < ps.length; i++) {
-                var nm = ps[i].name;
-                if (nm && nm !== '[Basic Paragraph]') names.push(nm);
-            }
-        } catch (e) {}
-        return names;
-    }
-    function getTableStyleNames() {
-        var names = ['— None —'];
-        try { var ts = app.activeDocument.tableStyles; for (var i=0;i<ts.length;i++) names.push(ts[i].name); } catch(e) {}
-        return names;
-    }
-    function getCellStyleNames() {
-        var names = ['— None —'];
-        try { var cs = app.activeDocument.cellStyles; for (var i=0;i<cs.length;i++) names.push(cs[i].name); } catch(e) {}
-        return names;
-    }
-
-    function addStyleRow(parent, labelText, ddItems, preselectText) {
-        var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 8; grp.alignChildren = 'left';
-        var st = grp.add('statictext', undefined, labelText); st.preferredSize.width = 80;
-        var dd = grp.add('dropdownlist', undefined, ddItems); dd.preferredSize.width = 220;
-        if (preselectText) {
-            for (var i=0;i<dd.items.length;i++){ if (dd.items[i].text === preselectText){ dd.selection = i; break; } }
-        } else { dd.selection = 0; }
-        return { group: grp, label: st, dropdown: dd };
-    }
-    function addBreakControlsInline(parent, defaultEnabled, defaultChar) {
-        var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 6; grp.alignChildren = 'left';
-        var cb = grp.add('checkbox', undefined, '|->¶'); cb.value = !!defaultEnabled; // visual indicator only
-        var st1 = grp.add('statictext', undefined, 'Replace:');
-        var et = grp.add('edittext', undefined, (defaultChar || '|')); et.characters = 4;
-        var st2 = grp.add('statictext', undefined, 'with line breaks');
-        return { group: grp, checkbox: cb, charInput: et };
-    }
-
-    // Session Fields
-    var pnlSession = tab.add('panel', undefined, 'Session Fields');
-    pnlSession.margins = [15, 15, 15, 15]; pnlSession.alignChildren = 'left';
-    var paraItems = getParagraphStyleNames();
-
-    var rowTitle = addStyleRow(pnlSession, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.titlePara : null);
-    var brTitle = addBreakControlsInline(rowTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].character : '|');
-
-    var rowTime = addStyleRow(pnlSession, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.timePara : null);
-    var brTime = addBreakControlsInline(rowTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].character : '|');
-
-    var rowNo = addStyleRow(pnlSession, 'Number:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.noPara : null);
-    var brNo = addBreakControlsInline(rowNo.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].character : '|');
-
-    // Chairpersons
-    var pnlChair = tab.add('panel', undefined, 'Chairpersons');
-    pnlChair.margins = [15, 15, 15, 15]; pnlChair.alignChildren = 'left';
-    var rowChairInline = addStyleRow(pnlChair, 'Style (Inline):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.inlinePara : null);
-    var rowChairGrid = addStyleRow(pnlChair, 'Style (Grid):', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.gridPara : null);
-    var brChair = addBreakControlsInline(rowChairInline.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].character : '||');
-
-    // Topics
-    var pnlTopics = tab.add('panel', undefined, 'Topics');
-    pnlTopics.margins = [15, 15, 15, 15]; pnlTopics.alignChildren = 'left';
-    var tableItems = getTableStyleNames();
-    var cellItems = getCellStyleNames();
-    var rowTbl = addStyleRow(pnlTopics, 'Table:', tableItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.tableStyle : null);
-    var rowCell = addStyleRow(pnlTopics, 'Cells:', cellItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.cellStyle : null);
-
-    var rowTopicTime = addStyleRow(pnlTopics, 'Time:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.timePara : null);
-    var brTopicTime = addBreakControlsInline(rowTopicTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].character : '|');
-
-    var rowTopicTitle = addStyleRow(pnlTopics, 'Title:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.titlePara : null);
-    var brTopicTitle = addBreakControlsInline(rowTopicTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].character : '|');
-
-    var rowTopicSpeaker = addStyleRow(pnlTopics, 'Speaker:', paraItems, defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : null);
-    var brTopicSpeaker = addBreakControlsInline(rowTopicSpeaker.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].enabled : false,
-        defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].character : '|');
-
-    // Create New Style button
-    var grpNew = tab.add('group'); grpNew.alignment = 'left';
-    var btnNewStyle = grpNew.add('button', undefined, '+ Create New Style...');
-    btnNewStyle.onClick = function() {
-        try {
-            var w = new Window('dialog', 'Create New Style'); w.alignChildren = 'left';
-            var g1 = w.add('group'); g1.add('statictext', undefined, 'Name:'); var etName = g1.add('edittext', undefined, ''); etName.characters = 24;
-            var g2 = w.add('group'); g2.add('statictext', undefined, 'Type:'); var ddType = g2.add('dropdownlist', undefined, ['Paragraph','Table','Cell']); ddType.selection = 0;
-            var gBtn = w.add('group'); var ok = gBtn.add('button', undefined, 'OK'); gBtn.add('button', undefined, 'Cancel', {name:'cancel'});
-            ok.onClick = function(){ w.close(1); };
-            if (w.show() !== 1) return;
-            var name = etName.text; var type = ddType.selection.text;
-            if (!name || name === '') return;
-            if (type === 'Paragraph') { app.activeDocument.paragraphStyles.add({name:name}); }
-            else if (type === 'Table') { app.activeDocument.tableStyles.add({name:name}); }
-            else { app.activeDocument.cellStyles.add({name:name}); }
-        } catch (e) { alert('Failed to create style: ' + e); }
-        // repopulate dropdowns
-        var pItems = getParagraphStyleNames(); var tItems = getTableStyleNames(); var cItems = getCellStyleNames();
-        function repop(dd, items){ if (!dd) return; var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null; dd.removeAll(); for (var i=0;i<items.length;i++) dd.add('item', items[i]); dd.selection = sel ? (function(){ for (var j=0;j<dd.items.length;j++){ if(dd.items[j].text===sel) return j;} return 0;})() : 0; }
-        repop(rowTitle.dropdown, pItems); repop(rowTime.dropdown, pItems); repop(rowNo.dropdown, pItems);
-        repop(rowChairInline.dropdown, pItems); repop(rowChairGrid.dropdown, pItems);
-        repop(rowTopicTime.dropdown, pItems); repop(rowTopicTitle.dropdown, pItems); repop(rowTopicSpeaker.dropdown, pItems);
-        repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems);
-    };
-
-    // Hide rows based on CSV availability
-    try {
-        if (availableFields) {
-            if (!availableFields['Session Title']) { rowTitle.group.visible = false; brTitle.group.visible = false; }
-            if (!availableFields['Session Time']) { rowTime.group.visible = false; brTime.group.visible = false; }
-            if (!availableFields['Session No']) { rowNo.group.visible = false; brNo.group.visible = false; }
-            if (!availableFields['Chairpersons']) { pnlChair.visible = false; }
-            if (!availableFields['Time']) { rowTopicTime.group.visible = false; brTopicTime.group.visible = false; }
-            if (!availableFields['Topic Title']) { rowTopicTitle.group.visible = false; brTopicTitle.group.visible = false; }
-            if (!availableFields['Speaker']) { rowTopicSpeaker.group.visible = false; brTopicSpeaker.group.visible = false; }
-        }
-    } catch (e) {}
-
-    // Expose properties so existing collectors work
-    tab.ddSessionTitle = rowTitle.dropdown;
-    tab.ddSessionTime = rowTime.dropdown;
-    tab.ddSessionNo = rowNo.dropdown;
-    tab.ddChairInline = rowChairInline.dropdown;
-    tab.ddChairGrid = rowChairGrid.dropdown;
-    tab.ddTableStyle = rowTbl.dropdown;
-    tab.ddCellStyle = rowCell.dropdown;
-    tab.ddTopicTime = rowTopicTime.dropdown;
-    tab.ddTopicTitle = rowTopicTitle.dropdown;
-    tab.ddTopicSpeaker = rowTopicSpeaker.dropdown;
-
-    tab.sessionControls = {
-        'SessionTitle': { checkbox: brTitle.checkbox, charInput: brTitle.charInput },
-        'SessionTime': { checkbox: brTime.checkbox, charInput: brTime.charInput },
-        'SessionNo': { checkbox: brNo.checkbox, charInput: brNo.charInput }
-    };
-    tab.chairpersonControls = {
-        'Chairpersons': { checkbox: brChair.checkbox, charInput: brChair.charInput }
-    };
-    tab.topicControls = {
-        'topicTime': { checkbox: brTopicTime.checkbox, charInput: brTopicTime.charInput },
-        'topicTitle': { checkbox: brTopicTitle.checkbox, charInput: brTopicTitle.charInput },
-        'topicSpeaker': { checkbox: brTopicSpeaker.checkbox, charInput: brTopicSpeaker.charInput }
-    };
-}
     var templateDoc = app.activeDocument;
+
+    // CRITICAL: Detect styles from original template BEFORE creating new document
+    var detectedTemplateStyles = detectActiveStylesFromTemplateDoc(templateDoc);
+    
+    // Debug logging for detected template styles in main
+    $.writeln("\n=== MAIN FUNCTION - DETECTED TEMPLATE STYLES ====");
+    $.writeln("sessionTitle: '" + detectedTemplateStyles.sessionTitle + "'");
+    $.writeln("sessionTime: '" + detectedTemplateStyles.sessionTime + "'");
+    $.writeln("sessionNo: '" + detectedTemplateStyles.sessionNo + "'");
+    $.writeln("chairStyle: '" + detectedTemplateStyles.chairStyle + "'");
+    $.writeln("topicTime: '" + detectedTemplateStyles.topicTime + "'");
+    $.writeln("topicTitle: '" + detectedTemplateStyles.topicTitle + "'");
+    $.writeln("topicSpeaker: '" + detectedTemplateStyles.topicSpeaker + "'");
+    $.writeln("tableStyle: '" + detectedTemplateStyles.tableStyle + "'");
+    $.writeln("cellStyle: '" + detectedTemplateStyles.cellStyle + "'");
+    $.writeln("=== END MAIN FUNCTION DEBUG ====");
 
     // --- Create a new document from the template ---
     var doc = app.documents.add();
@@ -467,6 +563,50 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     }
     // Apply corresponding masters from template to the duplicated pages
     applyMastersToPages(templateDoc, doc, masterMap);
+    
+    // CRITICAL: Re-verify and re-apply document setup after all page operations
+    // Some InDesign operations (master copying, page duplication) can override document settings
+    $.writeln("\n=== RE-VERIFYING DOCUMENT SETUP AFTER PAGE OPERATIONS ===");
+    var currentFacingPages = doc.documentPreferences.facingPages;
+    var currentPageBinding = doc.documentPreferences.pageBinding;
+    var currentPageDirection = safeGetDocProperty(doc, 'pageDirection', 'N/A');
+    
+    $.writeln("Current settings after page operations:");
+    $.writeln("  - Facing Pages: " + currentFacingPages);
+    $.writeln("  - Page Binding: " + currentPageBinding);
+    $.writeln("  - Page Direction: " + currentPageDirection);
+    
+    // If settings changed, reapply them
+    var sourceFacingPages = templateDoc.documentPreferences.facingPages;
+    var sourcePageBinding = templateDoc.documentPreferences.pageBinding;
+    var sourcePageDirection = safeGetDocProperty(templateDoc, 'pageDirection', 'N/A');
+    
+    var facingPagesChanged = currentFacingPages !== sourceFacingPages;
+    var pageBindingChanged = currentPageBinding !== sourcePageBinding;
+    var pageDirectionChanged = (sourcePageDirection !== 'N/A') && (currentPageDirection !== sourcePageDirection);
+    
+    if (facingPagesChanged || pageBindingChanged || pageDirectionChanged) {
+        
+        $.writeln("\n*** DOCUMENT SETUP WAS CHANGED BY PAGE OPERATIONS - RE-APPLYING ***");
+        
+        // Re-apply critical document setup settings
+        doc.documentPreferences.facingPages = sourceFacingPages;
+        doc.documentPreferences.pageBinding = sourcePageBinding;
+        
+        if (sourcePageDirection !== 'N/A') {
+            safeSetDocProperty(doc, 'pageDirection', sourcePageDirection);
+        }
+        
+        $.writeln("Document setup re-applied:");
+        $.writeln("  ✓ Facing Pages: " + doc.documentPreferences.facingPages + " (restored from: " + sourceFacingPages + ")");
+        $.writeln("  ✓ Page Binding: " + doc.documentPreferences.pageBinding + " (restored from: " + sourcePageBinding + ")");
+        if (sourcePageDirection !== 'N/A') {
+            $.writeln("  ✓ Page Direction: " + safeGetDocProperty(doc, 'pageDirection', 'N/A') + " (restored from: " + sourcePageDirection + ")");
+        }
+    } else {
+        $.writeln("Document setup preserved correctly after page operations.");
+    }
+    $.writeln("=== END DOCUMENT SETUP RE-VERIFICATION ===");
 
     // --- Detect layout capabilities of the template ---
     var hasIndependentTopicLayout = detectIndependentTopicSetup(doc.pages[0]);
@@ -501,8 +641,8 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         version: SCRIPT_VERSION
     };
 
-    // Get all user options from unified settings panel
-    var allOptions = getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields, csvInfo);
+    // Get all user options from unified settings panel (pass detected template styles)
+    var allOptions = getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields, csvInfo, detectedTemplateStyles);
     if (!allOptions) { doc.close(SaveOptions.NO); return; }
 
     var templatePage = doc.pages[0]; // This is now our master template page
@@ -575,35 +715,117 @@ function createCellStyleIfMissing(name, props) {
 }
 
 // Ensure a baseline set of default styles exists; returns names used
-function ensureDefaultStyles() {
-    var defaults = {
-        sessionTitle: "SessionTitle",
-        sessionTime: "SessionTime",
-        tableStyle: "TableStyle",
-        headerCell: "HeaderCell",
-        bodyCell: "BodyCell"
-    };
-    try {
-        // Paragraph styles
-        createParagraphStyleIfMissing(defaults.sessionTitle, { pointSize: 16, leading: 18 });
-        createParagraphStyleIfMissing(defaults.sessionTime, { pointSize: 10, leading: 12 });
-        // Cell styles first (so we can set them on table style)
-        createCellStyleIfMissing(defaults.headerCell, { topInset: 2, bottomInset: 2, leftInset: 2, rightInset: 2 });
-        createCellStyleIfMissing(defaults.bodyCell, { topInset: 1, bottomInset: 1, leftInset: 1, rightInset: 1 });
-        // Table style referencing cell styles if possible
-        var doc = app.activeDocument;
-        var headerCS = doc.cellStyles.itemByName(defaults.headerCell);
-        var bodyCS = doc.cellStyles.itemByName(defaults.bodyCell);
-        createTableStyleIfMissing(defaults.tableStyle, {
-            headerRegionCellStyle: headerCS && headerCS.isValid ? headerCS : undefined,
-            bodyRegionCellStyle: bodyCS && bodyCS.isValid ? bodyCS : undefined
-        });
-    } catch (e) {}
-    return defaults;
-}
+// ensureDefaultStyles function removed - auto-style creation feature disabled
+// Manual style creation is still available through the UI
 
 
 /* ---------------- LAYOUT DETECTION ---------------- */
+
+// Function to detect active styles from a specific template document
+function detectActiveStylesFromTemplateDoc(templateDoc) {
+    var activeStyles = {
+        sessionTitle: null,
+        sessionTime: null,
+        sessionNo: null,
+        chairStyle: null,
+        topicTime: null,
+        topicTitle: null,
+        topicSpeaker: null,
+        tableStyle: null,
+        cellStyle: null
+    };
+    
+    try {
+        var templatePage = templateDoc.pages[0];
+        
+        // Detect paragraph styles from text frames
+        var sessionTitleFrame = findItemByLabel(templatePage, 'sessionTitle');
+        if (sessionTitleFrame && sessionTitleFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = sessionTitleFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.sessionTitle = styleName;
+            }
+        }
+        
+        var sessionTimeFrame = findItemByLabel(templatePage, 'sessionTime');
+        if (sessionTimeFrame && sessionTimeFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = sessionTimeFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.sessionTime = styleName;
+            }
+        }
+        
+        var sessionNoFrame = findItemByLabel(templatePage, 'sessionNo');
+        if (sessionNoFrame && sessionNoFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = sessionNoFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.sessionNo = styleName;
+            }
+        }
+        
+        // For chairpersons, use a single style for both inline and grid modes
+        var chairFrame = findItemByLabel(templatePage, 'chairpersons');
+        if (chairFrame && chairFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = chairFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.chairStyle = styleName;
+            }
+        }
+        
+        // Detect independent topic styles
+        var topicTimeFrame = findItemByLabel(templatePage, 'topicTime');
+        if (topicTimeFrame && topicTimeFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = topicTimeFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.topicTime = styleName;
+            }
+        }
+        
+        var topicTitleFrame = findItemByLabel(templatePage, 'topicTitle');
+        if (topicTitleFrame && topicTitleFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = topicTitleFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.topicTitle = styleName;
+            }
+        }
+        
+        var topicSpeakerFrame = findItemByLabel(templatePage, 'topicSpeaker');
+        if (topicSpeakerFrame && topicSpeakerFrame.hasOwnProperty('appliedParagraphStyle')) {
+            var styleName = topicSpeakerFrame.appliedParagraphStyle.name;
+            if (styleName && styleName !== '[Basic Paragraph]' && styleName.charAt(0) !== '[') {
+                activeStyles.topicSpeaker = styleName;
+            }
+        }
+        
+        // Detect table styles from topicsTable
+        var topicsTableFrame = findItemByLabel(templatePage, 'topicsTable');
+        if (topicsTableFrame && topicsTableFrame.hasOwnProperty('tables') && topicsTableFrame.tables.length > 0) {
+            var table = topicsTableFrame.tables[0];
+            
+            // Get table style
+            if (table.appliedTableStyle && table.appliedTableStyle.name) {
+                var tableStyleName = table.appliedTableStyle.name;
+                if (tableStyleName && tableStyleName !== '[Basic Table]' && tableStyleName.charAt(0) !== '[') {
+                    activeStyles.tableStyle = tableStyleName;
+                }
+            }
+            
+            // Get cell style from first cell
+            if (table.cells.length > 0 && table.cells[0].appliedCellStyle && table.cells[0].appliedCellStyle.name) {
+                var cellStyleName = table.cells[0].appliedCellStyle.name;
+                if (cellStyleName && cellStyleName !== '[None]' && cellStyleName.charAt(0) !== '[') {
+                    activeStyles.cellStyle = cellStyleName;
+                }
+            }
+        }
+        
+    } catch (e) {
+        // Silently handle errors - if we can't detect styles, we'll just use defaults
+        $.writeln("Warning: Could not detect template styles: " + e);
+    }
+    
+    return activeStyles;
+}
 
 function detectIndependentTopicSetup(page) {
     // Check for topic frames with new naming convention
@@ -790,20 +1012,14 @@ function trimES(s) { if (s === null || s === undefined) return ""; return s.repl
 
 /* ---------------- UNIFIED SETTINGS PANEL ---------------- */
 
-function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields, csvInfo) {
+function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout, availableFields, csvInfo, detectedTemplateStyles) {
     var defaultSettings = getDefaultSettings();
-    // Ensure a minimal set of default styles exists and prefill defaults if not set
-    var createdDefaults = ensureDefaultStyles();
+    // Auto-style creation feature removed - styles should be manually created or detected from template
     if (!defaultSettings.stylesOptions) defaultSettings.stylesOptions = {};
     if (!defaultSettings.stylesOptions.session) defaultSettings.stylesOptions.session = {};
     if (!defaultSettings.stylesOptions.table) defaultSettings.stylesOptions.table = {};
     if (!defaultSettings.stylesOptions.chair) defaultSettings.stylesOptions.chair = defaultSettings.stylesOptions.chair || {};
     if (!defaultSettings.stylesOptions.topicsIndependent) defaultSettings.stylesOptions.topicsIndependent = defaultSettings.stylesOptions.topicsIndependent || {};
-    // Only set if empty so we don't override user's persisted choices
-    if (!defaultSettings.stylesOptions.session.titlePara) defaultSettings.stylesOptions.session.titlePara = createdDefaults.sessionTitle;
-    if (!defaultSettings.stylesOptions.session.timePara) defaultSettings.stylesOptions.session.timePara = createdDefaults.sessionTime;
-    if (!defaultSettings.stylesOptions.table.tableStyle) defaultSettings.stylesOptions.table.tableStyle = createdDefaults.tableStyle;
-    if (!defaultSettings.stylesOptions.table.cellStyle) defaultSettings.stylesOptions.table.cellStyle = createdDefaults.bodyCell;
     var dlg = new Window('dialog', 'QuickGenda - Configuration');
     dlg.alignChildren = 'fill';
     dlg.preferredSize.width = 600;
@@ -865,7 +1081,8 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
         defaultSettings,
         hasIndependentTopicLayout,
         hasTableTopicLayout,
-        availableFields
+        availableFields,
+        detectedTemplateStyles
     );
     
     // ===== ADVANCED: CENTRALIZED SETTINGS MANAGEMENT =====
@@ -1076,8 +1293,11 @@ function setupCADInfoTab(tab, csvInfo, analysis, onApplySuggested) {
 
     // CSV format help (moved from Content -> Chairpersons to Overview)
     var pnlCSVHelp = tab.add('panel', undefined, 'CSV Format Help');
-    pnlCSVHelp.margins = [15, 15, 15, 15];
+    pnlCSVHelp.margins = [5, 5, 5, 5];  // Reduced margins from 15 to 5
+    pnlCSVHelp.alignChildren = 'fill';
     var stCSVHelp = pnlCSVHelp.add('statictext', undefined, 'Use double pipe (||) to separate chairpersons in your CSV file.\nExample: "John Smith||Jane Doe||Robert Johnson"', {multiline: true});
+    stCSVHelp.alignment = 'fill';
+    stCSVHelp.preferredSize.height = 32;  // Fixed height for exactly 2 lines
     try { stCSVHelp.graphics.font = ScriptUI.newFont(stCSVHelp.graphics.font.name, ScriptUI.FontStyle.ITALIC, 10); } catch (e) {}
 }
 
@@ -1171,8 +1391,26 @@ function setupChairpersonsTab(tab, defaultSettings) {
     ddChairUnits.selection = defaultSettings.chairUnits ? indexOfExact(['pt', 'mm', 'cm', 'px'], defaultSettings.chairUnits) : 0;
 
     // Numeric-only validation for spacing fields
-    etColSpace.onChanging = function(){ this.text = this.text.replace(/[^0-9\.]/g, ''); };
-    etRowSpace.onChanging = function(){ this.text = this.text.replace(/[^0-9\.]/g, ''); };
+    etColSpace.onChanging = function(){ 
+        // Allow numbers and decimal points only
+        var cleanText = this.text.replace(/[^0-9\.]/g, '');
+        // Ensure only one decimal point
+        var parts = cleanText.split('.');
+        if (parts.length > 2) {
+            cleanText = parts[0] + '.' + parts.slice(1).join('');
+        }
+        this.text = cleanText;
+    };
+    etRowSpace.onChanging = function(){ 
+        // Allow numbers and decimal points only
+        var cleanText = this.text.replace(/[^0-9\.]/g, '');
+        // Ensure only one decimal point
+        var parts = cleanText.split('.');
+        if (parts.length > 2) {
+            cleanText = parts[0] + '.' + parts.slice(1).join('');
+        }
+        this.text = cleanText;
+    };
 
     
     var grpCenter = pnlGrid.add('group');
@@ -1240,6 +1478,7 @@ function setupChairpersonsTab(tab, defaultSettings) {
     tab.cbEnableImages = cbEnableImages;
     tab.etImageFolder = etImageFolder;
     tab.ddImageFitting = ddImageFitting;
+    tab.ddUnits = ddChairUnits; // Store the chair units dropdown reference
     
     // Make syncUI accessible from outside
     // helpers to enforce panels fully collapse when hidden
@@ -1307,10 +1546,28 @@ function setupChairpersonsTab(tab, defaultSettings) {
             etRows.onChanging = function(){ this.text = this.text.replace(/[^0-9]/g, ''); };
         }
         if (etColSpace && typeof etColSpace.onChanging === 'undefined') {
-            etColSpace.onChanging = function(){ this.text = this.text.replace(/[^0-9\.]/g, ''); };
+            etColSpace.onChanging = function(){ 
+                // Allow numbers and decimal points only
+                var cleanText = this.text.replace(/[^0-9\.]/g, '');
+                // Ensure only one decimal point
+                var parts = cleanText.split('.');
+                if (parts.length > 2) {
+                    cleanText = parts[0] + '.' + parts.slice(1).join('');
+                }
+                this.text = cleanText;
+            };
         }
         if (etRowSpace && typeof etRowSpace.onChanging === 'undefined') {
-            etRowSpace.onChanging = function(){ this.text = this.text.replace(/[^0-9\.]/g, ''); };
+            etRowSpace.onChanging = function(){ 
+                // Allow numbers and decimal points only
+                var cleanText = this.text.replace(/[^0-9\.]/g, '');
+                // Ensure only one decimal point
+                var parts = cleanText.split('.');
+                if (parts.length > 2) {
+                    cleanText = parts[0] + '.' + parts.slice(1).join('');
+                }
+                this.text = cleanText;
+            };
         }
     } catch (e) {}
     
@@ -1439,8 +1696,16 @@ function setupTopicsTab(tab, defaultSettings, hasIndependentLayout, hasTableLayo
     // Numeric-only validation for topic spacing (no key/wheel stepping)
     try {
         if (etSpacing) {
-            etSpacing.onChanging = function(){ this.text = this.text.replace(/[^0-9\.]/g, ''); };
-            // No keyboard or mouse wheel handlers (requested to disable)
+            etSpacing.onChanging = function(){ 
+                // Allow numbers and decimal points only
+                var cleanText = this.text.replace(/[^0-9\.]/g, '');
+                // Ensure only one decimal point
+                var parts = cleanText.split('.');
+                if (parts.length > 2) {
+                    cleanText = parts[0] + '.' + parts.slice(1).join('');
+                }
+                this.text = cleanText;
+            };
         }
     } catch (e) {}
     // Removed inline disabled notes; reasons now shown as helpTips on disabled radios
@@ -1602,8 +1867,8 @@ function updateChairpersonsTabFromSettings(tab, settings) {
     if (tab.ddOrder) tab.ddOrder.selection = settings.order === 'col' ? 1 : 0;
     if (tab.etCols) tab.etCols.text = settings.columns || '2';
     if (tab.etRows) tab.etRows.text = settings.rows || '2';
-    if (tab.etColSpace) tab.etColSpace.text = settings.colSpacing || '8';
-    if (tab.etRowSpace) tab.etRowSpace.text = settings.rowSpacing || '4';
+    if (tab.etColSpace) tab.etColSpace.text = String(settings.colSpacing || 8);
+    if (tab.etRowSpace) tab.etRowSpace.text = String(settings.rowSpacing || 4);
     if (tab.ddUnits) tab.ddUnits.selection = settings.units ? indexOfExact(['pt', 'mm', 'cm', 'px'], settings.units) : 0;
     if (tab.cbCenter) tab.cbCenter.value = settings.centerGrid || false;
     
@@ -1679,18 +1944,23 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab) {
     var modeIdx = selIndex(chairTab.ddMode, defs.chairMode === 'inline' ? 0 : 1);
     var orderIdx = selIndex(chairTab.ddOrder, defs.chairOrder === 'row' ? 0 : 1);
     var unitsTxt = selText(chairTab.ddUnits, defs.chairUnits);
-    var colSpaceTxt = getText(chairTab.etColSpace, '' + defs.chairColSpacing);
-    var rowSpaceTxt = getText(chairTab.etRowSpace, '' + defs.chairRowSpacing);
+    var colSpaceTxt = getText(chairTab.etColSpace, '' + (defs.chairColSpacing || 8));
+    var rowSpaceTxt = getText(chairTab.etRowSpace, '' + (defs.chairRowSpacing || 4));
+    
+    // Parse numeric values from text fields
+    var colSpaceNum = parseFloat(colSpaceTxt) || 8;
+    var rowSpaceNum = parseFloat(rowSpaceTxt) || 4;
+    
     var chairOptions = {
         mode: (modeIdx === 0) ? 'inline' : 'grid',
         inlineSeparator: getBool(chairTab.rbLines, defs.chairInlineSeparator === 'linebreak') ? 'linebreak' : 'comma',
         order: (orderIdx === 0) ? 'row' : 'col',
         columns: clampInt(toIntSafe(getText(chairTab.etCols, defs.chairColumns), defs.chairColumns), 1, 99),
         rows: clampInt(toIntSafe(getText(chairTab.etRows, defs.chairRows), defs.chairRows), 1, 99),
-        colSpacing: colSpaceTxt,
-        rowSpacing: rowSpaceTxt,
-        colSpacingPt: toPointsSafe(colSpaceTxt, unitsTxt),
-        rowSpacingPt: toPointsSafe(rowSpaceTxt, unitsTxt),
+        colSpacing: colSpaceNum,
+        rowSpacing: rowSpaceNum,
+        colSpacingPt: convertToPoints(colSpaceNum, unitsTxt),
+        rowSpacingPt: convertToPoints(rowSpaceNum, unitsTxt),
         units: unitsTxt,
         centerGrid: getBool(chairTab.cbCenter, !!defs.chairCenterGrid),
         enableImages: getBool(chairTab.cbEnableImages, false),
@@ -1701,12 +1971,14 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab) {
     // Collect topic settings (defensive)
     var topicModeTable = getBool(topicTab.rbTable, (defs.topicMode || 'table') === 'table');
     var topicUnits = selText(topicTab.ddSpaceUnits, defs.topicUnits);
-    var spacingTxt = getText(topicTab.etSpacing, '' + defs.topicVerticalSpacing);
+    var spacingTxt = getText(topicTab.etSpacing, '' + (defs.topicVerticalSpacing || 4));
+    var spacingNum = parseFloat(spacingTxt) || 4;
+    
     var topicOptions = {
         mode: topicModeTable ? 'table' : 'independent',
         includeHeader: getBool(topicTab.cbHeader, !!defs.topicIncludeHeader),
-        verticalSpacing: spacingTxt,
-        verticalSpacingPt: toPointsSafe(spacingTxt, topicUnits),
+        verticalSpacing: spacingNum,
+        verticalSpacingPt: convertToPoints(spacingNum, topicUnits),
         units: topicUnits
     };
 
@@ -1745,8 +2017,7 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab) {
             noPara: val(stylesTab && stylesTab.ddSessionNo)
         },
         chair: {
-            inlinePara: val(stylesTab && stylesTab.ddChairInline),
-            gridPara: val(stylesTab && stylesTab.ddChairGrid)
+            style: val(stylesTab && stylesTab.ddChair)
         },
         topicsIndependent: {
             timePara: val(stylesTab && stylesTab.ddTopicTime),
@@ -1874,15 +2145,66 @@ function applyPanelStyle(panel, level) {
 
 function clampInt(v, min, max) { if (isNaN(v)) v = min; if (v < min) v = min; if (v > max) v = max; return v; }
 
-function toPointsSafe(txt, units) { 
-    var n = parseFloat(txt); 
-    if (isNaN(n)) n = 0; 
-    switch(units) {
-        case 'mm': return n * 2.834645669;
-        case 'cm': return n * 28.34645669;
-        case 'px': return n * 0.75; // 96 DPI to 72 DPI conversion
+// Ensure document measurement units are set to points for accurate positioning
+function ensurePointUnits() {
+    var doc = app.activeDocument;
+    var originalHUnits = doc.viewPreferences.horizontalMeasurementUnits;
+    var originalVUnits = doc.viewPreferences.verticalMeasurementUnits;
+    
+    // Set to points
+    doc.viewPreferences.horizontalMeasurementUnits = MeasurementUnits.POINTS;
+    doc.viewPreferences.verticalMeasurementUnits = MeasurementUnits.POINTS;
+    
+    return {
+        horizontal: originalHUnits,
+        vertical: originalVUnits
+    };
+}
+
+// Restore original document measurement units
+function restoreUnits(originalUnits) {
+    try {
+        var doc = app.activeDocument;
+        doc.viewPreferences.horizontalMeasurementUnits = originalUnits.horizontal;
+        doc.viewPreferences.verticalMeasurementUnits = originalUnits.vertical;
+    } catch (e) {
+        // Ignore restoration errors
+    }
+}
+
+// Simplified and more reliable unit conversion function
+function convertToPoints(numericValue, unit) {
+    var n = parseFloat(numericValue);
+    if (isNaN(n)) n = 0;
+    
+    var result;
+    switch (unit) {
+        case 'mm': result = n * 2.834645669;  // 1mm = 2.834645669 points
+            break;
+        case 'cm': result = n * 28.34645669;  // 1cm = 28.34645669 points
+            break;
+        case 'px': result = n;         // 1px = 1 point
         case 'pt':
-        default: return n;
+        default: result = n;                  // points remain as points
+            break;
+    }
+    
+    return result;
+}
+
+// Helper function to safely apply paragraph style to a text frame
+function applyParagraphStyleToFrame(textFrame, styleName) {
+    if (!textFrame || !styleName || styleName === '' || styleName === '— None —') return;
+    
+    try {
+        var doc = app.activeDocument;
+        var paragraphStyle = doc.paragraphStyles.itemByName(styleName);
+        if (paragraphStyle && paragraphStyle.isValid) {
+            // Apply style to the entire text frame
+            textFrame.appliedParagraphStyle = paragraphStyle;
+        }
+    } catch (e) {
+        $.writeln("Warning: Could not apply paragraph style '" + styleName + "' to text frame: " + e);
     }
 }
 
@@ -1898,21 +2220,33 @@ function fillPagePlaceholders(page, session, chairOptions, topicOptions, lineBre
         return;
     }
 
-    // Fill session-level placeholders with line break support
+    // Fill session-level placeholders with line break support and paragraph styles
     if (placeholders.sessionTitle && session.title) {
         placeholders.sessionTitle.contents = session.title;
+        // Apply paragraph style if specified
+        if (stylesOptions && stylesOptions.session && stylesOptions.session.titlePara) {
+            applyParagraphStyleToFrame(placeholders.sessionTitle, stylesOptions.session.titlePara);
+        }
         if (lineBreakOptions.lineBreaks.SessionTitle && lineBreakOptions.lineBreaks.SessionTitle.enabled) {
             applyLineBreaksToFrame(placeholders.sessionTitle, lineBreakOptions.lineBreaks.SessionTitle.character);
         }
     }
     if (placeholders.sessionTime && session.time) {
         placeholders.sessionTime.contents = session.time;
+        // Apply paragraph style if specified
+        if (stylesOptions && stylesOptions.session && stylesOptions.session.timePara) {
+            applyParagraphStyleToFrame(placeholders.sessionTime, stylesOptions.session.timePara);
+        }
         if (lineBreakOptions.lineBreaks.SessionTime && lineBreakOptions.lineBreaks.SessionTime.enabled) {
             applyLineBreaksToFrame(placeholders.sessionTime, lineBreakOptions.lineBreaks.SessionTime.character);
         }
     }
     if (placeholders.sessionNo && session.no) {
         placeholders.sessionNo.contents = session.no;
+        // Apply paragraph style if specified
+        if (stylesOptions && stylesOptions.session && stylesOptions.session.noPara) {
+            applyParagraphStyleToFrame(placeholders.sessionNo, stylesOptions.session.noPara);
+        }
         if (lineBreakOptions.lineBreaks.SessionNo && lineBreakOptions.lineBreaks.SessionNo.enabled) {
             applyLineBreaksToFrame(placeholders.sessionNo, lineBreakOptions.lineBreaks.SessionNo.character);
         }
@@ -1920,20 +2254,24 @@ function fillPagePlaceholders(page, session, chairOptions, topicOptions, lineBre
     
     // Fill chairpersons
     if (placeholders.chairpersons && session.chairs) {
-        populateChairs(page, placeholders.chairpersons, session.chairs, chairOptions, lineBreakOptions);
+        populateChairs(page, placeholders.chairpersons, session.chairs, chairOptions, lineBreakOptions, stylesOptions);
     }
 
     // Fill topics
     if (topicOptions.mode === 'table' && placeholders.topicsTable) {
         populateTopicsAsTable(placeholders.topicsTable, session.topics, topicOptions, lineBreakOptions, stylesOptions);
     } else if (topicOptions.mode === 'independent' && hasIndependentTopicLayout) {
-        populateTopicsAsIndependentRows(page, session.topics, topicOptions, lineBreakOptions);
+        populateTopicsAsIndependentRows(page, session.topics, topicOptions, lineBreakOptions, stylesOptions);
     }
 }
 
-function populateChairs(page, chairFrame, chairsRaw, opts, lineBreakOptions) {
-    removeExistingChairClones(page);
-    var names = splitChairs(chairsRaw); // Uses || delimiter
+function populateChairs(page, chairFrame, chairsRaw, opts, lineBreakOptions, stylesOptions) {
+    // Ensure document is using points for accurate positioning
+    var originalUnits = ensurePointUnits();
+    
+    try {
+        removeExistingChairClones(page);
+        var names = splitChairs(chairsRaw); // Uses || delimiter
     
     // Initialize image results if image automation is enabled
     if (opts.enableImages && opts.imageFolder) {
@@ -1950,6 +2288,11 @@ function populateChairs(page, chairFrame, chairsRaw, opts, lineBreakOptions) {
     if (opts.mode === 'inline') {
         var content = (names.length === 0) ? "" : ((opts.inlineSeparator === 'linebreak') ? names.join("\r") : names.join(", "));
         chairFrame.contents = content;
+        
+        // Apply paragraph style if specified
+        if (stylesOptions && stylesOptions.chair && stylesOptions.chair.style) {
+            applyParagraphStyleToFrame(chairFrame, stylesOptions.chair.style);
+        }
         
         // Apply line breaks if requested
         if (lineBreakOptions.lineBreaks.Chairpersons && lineBreakOptions.lineBreaks.Chairpersons.enabled && content) {
@@ -2034,6 +2377,10 @@ function populateChairs(page, chairFrame, chairsRaw, opts, lineBreakOptions) {
         var tf = rootIsGroup ? findDescendantByLabel(clone, "chairpersons") : clone;
         if (tf) {
             tf.contents = names[i];
+            // Apply paragraph style if specified
+            if (stylesOptions && stylesOptions.chair && stylesOptions.chair.style) {
+                applyParagraphStyleToFrame(tf, stylesOptions.chair.style);
+            }
             // Apply line breaks if requested
             if (lineBreakOptions.lineBreaks.Chairpersons && lineBreakOptions.lineBreaks.Chairpersons.enabled) {
                 applyLineBreaksToFrame(tf, lineBreakOptions.lineBreaks.Chairpersons.character);
@@ -2060,6 +2407,11 @@ function populateChairs(page, chairFrame, chairsRaw, opts, lineBreakOptions) {
         
         var cgb = clone.geometricBounds;
         clone.move(undefined, [targetX - cgb[1], targetY - cgb[0]]);
+    }
+    
+    } finally {
+        // Restore original document units
+        restoreUnits(originalUnits);
     }
 }
 
@@ -2181,8 +2533,12 @@ function populateTopicsAsTable(tableFrame, topics, opts, lineBreakOptions, style
     }
 }
 
-function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions) {
-    removeExistingTopicClones(page);
+function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions, stylesOptions) {
+    // Ensure document is using points for accurate positioning
+    var originalUnits = ensurePointUnits();
+    
+    try {
+        removeExistingTopicClones(page);
     
     // Find the topic frames with new naming convention
     var protoTime = findItemByLabel(page, "topicTime");
@@ -2219,18 +2575,30 @@ function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions) {
             
             if (tTime) {
                 tTime.contents = topics[i].time;
+                // Apply paragraph style if specified
+                if (stylesOptions && stylesOptions.topicsIndependent && stylesOptions.topicsIndependent.timePara) {
+                    applyParagraphStyleToFrame(tTime, stylesOptions.topicsIndependent.timePara);
+                }
                 if (lineBreakOptions.lineBreaks.topicTime && lineBreakOptions.lineBreaks.topicTime.enabled) {
                     applyLineBreaksToFrame(tTime, lineBreakOptions.lineBreaks.topicTime.character);
                 }
             }
             if (tTopic) {
                 tTopic.contents = topics[i].title;
+                // Apply paragraph style if specified
+                if (stylesOptions && stylesOptions.topicsIndependent && stylesOptions.topicsIndependent.titlePara) {
+                    applyParagraphStyleToFrame(tTopic, stylesOptions.topicsIndependent.titlePara);
+                }
                 if (lineBreakOptions.lineBreaks.topicTitle && lineBreakOptions.lineBreaks.topicTitle.enabled) {
                     applyLineBreaksToFrame(tTopic, lineBreakOptions.lineBreaks.topicTitle.character);
                 }
             }
             if (tSpeaker) {
                 tSpeaker.contents = topics[i].speaker;
+                // Apply paragraph style if specified
+                if (stylesOptions && stylesOptions.topicsIndependent && stylesOptions.topicsIndependent.speakerPara) {
+                    applyParagraphStyleToFrame(tSpeaker, stylesOptions.topicsIndependent.speakerPara);
+                }
                 if (lineBreakOptions.lineBreaks.topicSpeaker && lineBreakOptions.lineBreaks.topicSpeaker.enabled) {
                     applyLineBreaksToFrame(tSpeaker, lineBreakOptions.lineBreaks.topicSpeaker.character);
                 }
@@ -2259,6 +2627,10 @@ function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions) {
             timeClone.label = "topicClone_Time";
             timeClone.visible = true;
             timeClone.contents = topics[i].time;
+            // Apply paragraph style if specified
+            if (stylesOptions && stylesOptions.topicsIndependent && stylesOptions.topicsIndependent.timePara) {
+                applyParagraphStyleToFrame(timeClone, stylesOptions.topicsIndependent.timePara);
+            }
             if (lineBreakOptions.lineBreaks.topicTime && lineBreakOptions.lineBreaks.topicTime.enabled) {
                 applyLineBreaksToFrame(timeClone, lineBreakOptions.lineBreaks.topicTime.character);
             }
@@ -2269,6 +2641,10 @@ function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions) {
             topicClone.label = "topicClone_Topic";
             topicClone.visible = true;
             topicClone.contents = topics[i].title;
+            // Apply paragraph style if specified
+            if (stylesOptions && stylesOptions.topicsIndependent && stylesOptions.topicsIndependent.titlePara) {
+                applyParagraphStyleToFrame(topicClone, stylesOptions.topicsIndependent.titlePara);
+            }
             if (lineBreakOptions.lineBreaks.topicTitle && lineBreakOptions.lineBreaks.topicTitle.enabled) {
                 applyLineBreaksToFrame(topicClone, lineBreakOptions.lineBreaks.topicTitle.character);
             }
@@ -2279,11 +2655,20 @@ function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions) {
             speakerClone.label = "topicClone_Speaker";
             speakerClone.visible = true;
             speakerClone.contents = topics[i].speaker;
+            // Apply paragraph style if specified
+            if (stylesOptions && stylesOptions.topicsIndependent && stylesOptions.topicsIndependent.speakerPara) {
+                applyParagraphStyleToFrame(speakerClone, stylesOptions.topicsIndependent.speakerPara);
+            }
             if (lineBreakOptions.lineBreaks.topicSpeaker && lineBreakOptions.lineBreaks.topicSpeaker.enabled) {
                 applyLineBreaksToFrame(speakerClone, lineBreakOptions.lineBreaks.topicSpeaker.character);
             }
             speakerClone.move(undefined, [0, targetY - speakerClone.geometricBounds[0]]);
         }
+    }
+    
+    } finally {
+        // Restore original document units
+        restoreUnits(originalUnits);
     }
 }
 
@@ -3294,12 +3679,10 @@ function setupStylesTab(tab, defaultSettings, hasIndependentLayout, hasTableLayo
 
             function repop(dd, itemsArr, targetName) {
                 if (!dd) return;
-                var prev = (dd.selection && dd.selection.text) ? dd.selection.text : '';
+                var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null;
                 dd.removeAll();
-                for (var j = 0; j < itemsArr.length; j++) dd.add('item', itemsArr[j]);
-                // Restore selection or select targetName
-                var want = targetName || prev;
-                selectDropdownByText(dd, want);
+                for (var i = 0; i < itemsArr.length; i++) dd.add('item', itemsArr[i]);
+                dd.selection = sel ? (function(){ for (var j = 0; j < dd.items.length; j++){ if(dd.items[j].text===sel) return j;} return 0;})() : 0;
             }
 
             repop(ddSessionTitle, pItems, newType === 'Paragraph' ? newName : null);
@@ -3370,8 +3753,7 @@ function updateStylesTabFromSettings(tab, stylesOptions, hasIndependentLayout, h
             selectDropdownByText(tab.ddSessionNo, stylesOptions.session.noPara);
         }
         if (stylesOptions.chair) {
-            selectDropdownByText(tab.ddChairInline, stylesOptions.chair.inlinePara);
-            selectDropdownByText(tab.ddChairGrid, stylesOptions.chair.gridPara);
+            selectDropdownByText(tab.ddChair, stylesOptions.chair.style);
         }
         if (stylesOptions.topicsIndependent) {
             selectDropdownByText(tab.ddTopicTime, stylesOptions.topicsIndependent.timePara);
@@ -3432,25 +3814,153 @@ try {
     alert("An unexpected error occurred.\n\nError: " + e + (e.line ? ("\nLine: " + e.line) : ""));
 }
 
+/* ---------------- DOCUMENT SETUP COPYING ---------------- */
+
+/**
+ * Safely get a document preference property with fallback for older InDesign versions
+ */
+function safeGetDocProperty(doc, propertyName, fallbackValue) {
+    try {
+        if (doc.documentPreferences.hasOwnProperty(propertyName)) {
+            return doc.documentPreferences[propertyName];
+        }
+        return fallbackValue;
+    } catch (e) {
+        $.writeln("Warning: Property '" + propertyName + "' not supported in this InDesign version: " + e);
+        return fallbackValue;
+    }
+}
+
+/**
+ * Safely set a document preference property with fallback for older InDesign versions
+ */
+function safeSetDocProperty(doc, propertyName, value) {
+    try {
+        if (doc.documentPreferences.hasOwnProperty(propertyName)) {
+            doc.documentPreferences[propertyName] = value;
+            return true;
+        }
+        $.writeln("Warning: Property '" + propertyName + "' not supported in this InDesign version");
+        return false;
+    } catch (e) {
+        $.writeln("Warning: Could not set property '" + propertyName + "': " + e);
+        return false;
+    }
+}
+
+/**
+ * Copy comprehensive document setup options from source template to new document
+ * 
+ * Includes:
+ * - Page size, orientation, margins, bleeds, slugs
+ * - Facing pages, binding, and page direction settings
+ * - View preferences (measurement units, rulers, guides visibility)
+ * - Grid and baseline grid settings
+ * - Guide preferences and behavior
+ * - Text preferences and typography settings
+ * - Print setup preferences
+ * - Color management settings
+ * - Transparency and pasteboard preferences
+ * - Story preferences (optical margin, smart text reflow)
+ * 
+ * This ensures the new document inherits all formatting and display
+ * preferences from the original template for consistent workflow.
+ */
 function copyDocumentSettings(sourceDoc, targetDoc) {
     try {
+        // CRITICAL: Copy facing pages FIRST - this affects all other layout settings
+        var sourceFacingPages = sourceDoc.documentPreferences.facingPages;
+        var sourcePageBinding = sourceDoc.documentPreferences.pageBinding;
+        var sourcePageDirection = safeGetDocProperty(sourceDoc, 'pageDirection', 'N/A');
+        
+        $.writeln("Source document setup:");
+        $.writeln("  - Facing Pages: " + sourceFacingPages);
+        $.writeln("  - Page Binding: " + sourcePageBinding);
+        $.writeln("  - Page Direction: " + sourcePageDirection);
+        
+        // Set facing pages first as it affects margin calculations
+        targetDoc.documentPreferences.facingPages = sourceFacingPages;
+        
         // Copy page size and orientation
         targetDoc.documentPreferences.pageWidth = sourceDoc.documentPreferences.pageWidth;
         targetDoc.documentPreferences.pageHeight = sourceDoc.documentPreferences.pageHeight;
         targetDoc.documentPreferences.pageOrientation = sourceDoc.documentPreferences.pageOrientation;
         
-        // Copy facing pages setting - CRITICAL for binding
-        targetDoc.documentPreferences.facingPages = sourceDoc.documentPreferences.facingPages;
+        // Copy binding settings AFTER facing pages is set
+        targetDoc.documentPreferences.pageBinding = sourcePageBinding;
         
-        // Copy binding settings - CRITICAL for page direction
-        targetDoc.documentPreferences.pageBinding = sourceDoc.documentPreferences.pageBinding;
-        targetDoc.documentPreferences.pageDirection = sourceDoc.documentPreferences.pageDirection;
+        // Safely copy pageDirection (not available in all InDesign versions)
+        if (sourcePageDirection !== 'N/A') {
+            safeSetDocProperty(targetDoc, 'pageDirection', sourcePageDirection);
+        }
         
-        // Copy margins
+        // Copy margins AFTER facing pages and binding are set (affects inside/outside margins)
         targetDoc.documentPreferences.documentMarginTop = sourceDoc.documentPreferences.documentMarginTop;
         targetDoc.documentPreferences.documentMarginBottom = sourceDoc.documentPreferences.documentMarginBottom;
         targetDoc.documentPreferences.documentMarginLeft = sourceDoc.documentPreferences.documentMarginLeft;
         targetDoc.documentPreferences.documentMarginRight = sourceDoc.documentPreferences.documentMarginRight;
+        
+        // Copy inside/outside margins if facing pages are enabled
+        try {
+            if (sourceFacingPages && sourceDoc.documentPreferences.hasOwnProperty('documentMarginInside')) {
+                targetDoc.documentPreferences.documentMarginInside = sourceDoc.documentPreferences.documentMarginInside;
+                targetDoc.documentPreferences.documentMarginOutside = sourceDoc.documentPreferences.documentMarginOutside;
+                $.writeln("  ✓ Copied inside/outside margins for facing pages");
+            }
+        } catch (insideMarginErr) {
+            $.writeln("Warning: Could not copy inside/outside margins: " + insideMarginErr);
+        }
+        
+        // Copy additional document setup properties
+        try {
+            targetDoc.documentPreferences.pagesPerDocument = sourceDoc.documentPreferences.pagesPerDocument;
+        } catch (pagesErr) {
+            $.writeln("Warning: Could not copy pagesPerDocument: " + pagesErr);
+        }
+        
+        try {
+            targetDoc.documentPreferences.startPageNumber = sourceDoc.documentPreferences.startPageNumber;
+        } catch (startErr) {
+            $.writeln("Warning: Could not copy startPageNumber: " + startErr);
+        }
+        
+        try {
+            targetDoc.documentPreferences.columnCount = sourceDoc.documentPreferences.columnCount;
+            targetDoc.documentPreferences.columnGutter = sourceDoc.documentPreferences.columnGutter;
+        } catch (colErr) {
+            $.writeln("Warning: Could not copy column settings: " + colErr);
+        }
+        
+        // Copy additional layout and setup properties
+        try {
+            // Master page shuffling and item behavior
+            targetDoc.documentPreferences.allowPageShuffle = sourceDoc.documentPreferences.allowPageShuffle;
+            targetDoc.documentPreferences.allowMasterPageItemsToResize = sourceDoc.documentPreferences.allowMasterPageItemsToResize;
+            targetDoc.documentPreferences.allowMasterPageItemsToMove = sourceDoc.documentPreferences.allowMasterPageItemsToMove;
+        } catch (shuffleErr) {
+            $.writeln("Warning: Could not copy master page behavior settings: " + shuffleErr);
+        }
+        
+        // Copy document intent (print/web) - affects many layout behaviors
+        try {
+            targetDoc.documentPreferences.intent = sourceDoc.documentPreferences.intent;
+            targetDoc.documentPreferences.outputIntent = sourceDoc.documentPreferences.outputIntent;
+        } catch (intentErr) {
+            $.writeln("Warning: Could not copy document intent: " + intentErr);
+        }
+        
+        // Copy spread and page positioning settings
+        try {
+            // These properties affect how pages are displayed and arranged
+            if (sourceDoc.documentPreferences.hasOwnProperty('spreadDirection')) {
+                targetDoc.documentPreferences.spreadDirection = sourceDoc.documentPreferences.spreadDirection;
+            }
+            if (sourceDoc.documentPreferences.hasOwnProperty('pagePositioning')) {
+                targetDoc.documentPreferences.pagePositioning = sourceDoc.documentPreferences.pagePositioning;
+            }
+        } catch (posErr) {
+            $.writeln("Warning: Could not copy spread positioning settings: " + posErr);
+        }
         
         // Copy bleed settings
         targetDoc.documentPreferences.documentBleedTopOffset = sourceDoc.documentPreferences.documentBleedTopOffset;
@@ -3465,22 +3975,139 @@ function copyDocumentSettings(sourceDoc, targetDoc) {
         targetDoc.documentPreferences.documentSlugOutsideOrRightOffset = sourceDoc.documentPreferences.documentSlugOutsideOrRightOffset;
         
         // Copy page numbering settings
-        targetDoc.documentPreferences.pageNumberingStartPage = sourceDoc.documentPreferences.pageNumberingStartPage;
-        targetDoc.documentPreferences.pageNumberingSectionPrefix = sourceDoc.documentPreferences.pageNumberingSectionPrefix;
+        try {
+            targetDoc.documentPreferences.pageNumberingStartPage = sourceDoc.documentPreferences.pageNumberingStartPage;
+            targetDoc.documentPreferences.pageNumberingSectionPrefix = sourceDoc.documentPreferences.pageNumberingSectionPrefix;
+        } catch (numberingErr) {
+            $.writeln("Warning: Could not copy page numbering settings: " + numberingErr);
+        }
         
-        // Copy other document preferences
-        targetDoc.documentPreferences.allowPageShuffle = sourceDoc.documentPreferences.allowPageShuffle;
-        targetDoc.documentPreferences.allowMasterPageItemsToResize = sourceDoc.documentPreferences.allowMasterPageItemsToResize;
-        targetDoc.documentPreferences.allowMasterPageItemsToMove = sourceDoc.documentPreferences.allowMasterPageItemsToMove;
+        // Copy view preferences (measurement units, rulers, guides visibility)
+        try {
+            targetDoc.viewPreferences.horizontalMeasurementUnits = sourceDoc.viewPreferences.horizontalMeasurementUnits;
+            targetDoc.viewPreferences.verticalMeasurementUnits = sourceDoc.viewPreferences.verticalMeasurementUnits;
+            targetDoc.viewPreferences.typographicMeasurementUnits = sourceDoc.viewPreferences.typographicMeasurementUnits;
+            targetDoc.viewPreferences.rulerOrigin = sourceDoc.viewPreferences.rulerOrigin;
+            targetDoc.viewPreferences.showRulers = sourceDoc.viewPreferences.showRulers;
+            targetDoc.viewPreferences.showFrameEdges = sourceDoc.viewPreferences.showFrameEdges;
+            targetDoc.viewPreferences.showMargins = sourceDoc.viewPreferences.showMargins;
+            targetDoc.viewPreferences.showBaselines = sourceDoc.viewPreferences.showBaselines;
+            targetDoc.viewPreferences.showDocumentGrid = sourceDoc.viewPreferences.showDocumentGrid;
+            targetDoc.viewPreferences.showBaselines = sourceDoc.viewPreferences.showBaselines;
+        } catch (viewErr) {
+            $.writeln("Warning: Could not copy all view preferences: " + viewErr);
+        }
         
-        // Copy document intent and output settings
-        targetDoc.documentPreferences.intent = sourceDoc.documentPreferences.intent;
-        targetDoc.documentPreferences.outputIntent = sourceDoc.documentPreferences.outputIntent;
+        // Copy grid preferences
+        try {
+            targetDoc.gridPreferences.horizontalGridlineDivision = sourceDoc.gridPreferences.horizontalGridlineDivision;
+            targetDoc.gridPreferences.horizontalGridlineSubdivision = sourceDoc.gridPreferences.horizontalGridlineSubdivision;
+            targetDoc.gridPreferences.verticalGridlineDivision = sourceDoc.gridPreferences.verticalGridlineDivision;
+            targetDoc.gridPreferences.verticalGridlineSubdivision = sourceDoc.gridPreferences.verticalGridlineSubdivision;
+            targetDoc.gridPreferences.baselineStart = sourceDoc.gridPreferences.baselineStart;
+            targetDoc.gridPreferences.baselineDivision = sourceDoc.gridPreferences.baselineDivision;
+            targetDoc.gridPreferences.baselineShown = sourceDoc.gridPreferences.baselineShown;
+            targetDoc.gridPreferences.documentGridShown = sourceDoc.gridPreferences.documentGridShown;
+            targetDoc.gridPreferences.gridShown = sourceDoc.gridPreferences.gridShown;
+        } catch (gridErr) {
+            $.writeln("Warning: Could not copy grid preferences: " + gridErr);
+        }
         
-        $.writeln("Document settings copied successfully");
-        $.writeln("Facing pages: " + targetDoc.documentPreferences.facingPages);
-        $.writeln("Page binding: " + targetDoc.documentPreferences.pageBinding);
-        $.writeln("Page direction: " + targetDoc.documentPreferences.pageDirection);
+        // Copy guide preferences
+        try {
+            targetDoc.guidePreferences.guidesShown = sourceDoc.guidePreferences.guidesShown;
+            targetDoc.guidePreferences.guidesLocked = sourceDoc.guidePreferences.guidesLocked;
+            targetDoc.guidePreferences.guidesInBack = sourceDoc.guidePreferences.guidesInBack;
+            targetDoc.guidePreferences.guidesSnapto = sourceDoc.guidePreferences.guidesSnapto;
+            targetDoc.guidePreferences.rulerGuidesViewThreshold = sourceDoc.guidePreferences.rulerGuidesViewThreshold;
+        } catch (guideErr) {
+            $.writeln("Warning: Could not copy guide preferences: " + guideErr);
+        }
+        
+        // Copy text preferences
+        try {
+            targetDoc.textPreferences.showInvisibles = sourceDoc.textPreferences.showInvisibles;
+            targetDoc.textPreferences.justifyTextWraps = sourceDoc.textPreferences.justifyTextWraps;
+            targetDoc.textPreferences.abutTextToTextWrap = sourceDoc.textPreferences.abutTextToTextWrap;
+            targetDoc.textPreferences.linkTextFilesWhenImporting = sourceDoc.textPreferences.linkTextFilesWhenImporting;
+            targetDoc.textPreferences.moveSystemClipboard = sourceDoc.textPreferences.moveSystemClipboard;
+            targetDoc.textPreferences.useOpticalMarginAlignment = sourceDoc.textPreferences.useOpticalMarginAlignment;
+            targetDoc.textPreferences.useParagraphLeading = sourceDoc.textPreferences.useParagraphLeading;
+        } catch (textErr) {
+            $.writeln("Warning: Could not copy text preferences: " + textErr);
+        }
+        
+        // Copy print preferences (basic settings)
+        try {
+            targetDoc.printPreferences.pagePosition = sourceDoc.printPreferences.pagePosition;
+            targetDoc.printPreferences.thumbnails = sourceDoc.printPreferences.thumbnails;
+            targetDoc.printPreferences.useDocumentBleedToPrint = sourceDoc.printPreferences.useDocumentBleedToPrint;
+            targetDoc.printPreferences.printBlankPages = sourceDoc.printPreferences.printBlankPages;
+            targetDoc.printPreferences.printMasterPages = sourceDoc.printPreferences.printMasterPages;
+            targetDoc.printPreferences.printNonprintingObjects = sourceDoc.printPreferences.printNonprintingObjects;
+            targetDoc.printPreferences.printVisibleGuidesAndBaselines = sourceDoc.printPreferences.printVisibleGuidesAndBaselines;
+        } catch (printErr) {
+            $.writeln("Warning: Could not copy print preferences: " + printErr);
+        }
+        
+        // Copy transparency preferences
+        try {
+            targetDoc.transparencyPreferences.blendingColorSpace = sourceDoc.transparencyPreferences.blendingColorSpace;
+        } catch (transErr) {
+            $.writeln("Warning: Could not copy transparency preferences: " + transErr);
+        }
+        
+        // Copy story preferences
+        try {
+            targetDoc.storyPreferences.opticalMarginAlignment = sourceDoc.storyPreferences.opticalMarginAlignment;
+            targetDoc.storyPreferences.opticalMarginSize = sourceDoc.storyPreferences.opticalMarginSize;
+            targetDoc.storyPreferences.smartTextReflow = sourceDoc.storyPreferences.smartTextReflow;
+        } catch (storyErr) {
+            $.writeln("Warning: Could not copy story preferences: " + storyErr);
+        }
+        
+        // Copy color management settings
+        try {
+            targetDoc.colorPreferences.cmykPolicy = sourceDoc.colorPreferences.cmykPolicy;
+            targetDoc.colorPreferences.rgbPolicy = sourceDoc.colorPreferences.rgbPolicy;
+            targetDoc.colorPreferences.enableColorManagement = sourceDoc.colorPreferences.enableColorManagement;
+        } catch (colorErr) {
+            $.writeln("Warning: Could not copy color management settings: " + colorErr);
+        }
+        
+        // Copy pasteboard preferences
+        try {
+            targetDoc.pasteboardPreferences.pasteboardMargins = sourceDoc.pasteboardPreferences.pasteboardMargins;
+            targetDoc.pasteboardPreferences.minimumSpaceAboveAndBelow = sourceDoc.pasteboardPreferences.minimumSpaceAboveAndBelow;
+        } catch (pasteErr) {
+            $.writeln("Warning: Could not copy pasteboard preferences: " + pasteErr);
+        }
+        
+        $.writeln("\n=== DOCUMENT SETUP COPY VERIFICATION ===");
+        $.writeln("Document Setup Properties Copied:");
+        $.writeln("  ✓ Facing Pages: " + targetDoc.documentPreferences.facingPages + " (was: " + sourceFacingPages + ")");
+        $.writeln("  ✓ Page Binding: " + targetDoc.documentPreferences.pageBinding + " (was: " + sourcePageBinding + ")");
+        
+        var currentPageDirection = safeGetDocProperty(targetDoc, 'pageDirection', 'N/A');
+        if (sourcePageDirection !== 'N/A') {
+            $.writeln("  ✓ Page Direction: " + currentPageDirection + " (was: " + sourcePageDirection + ")");
+        } else {
+            $.writeln("  • Page Direction: Not supported in this InDesign version");
+        }
+        
+        $.writeln("  ✓ Page Size: " + targetDoc.documentPreferences.pageWidth + " x " + targetDoc.documentPreferences.pageHeight);
+        $.writeln("  ✓ Page Orientation: " + targetDoc.documentPreferences.pageOrientation);
+        
+        try {
+            $.writeln("  ✓ Pages Per Document: " + targetDoc.documentPreferences.pagesPerDocument);
+            $.writeln("  ✓ Start Page Number: " + targetDoc.documentPreferences.startPageNumber);
+            $.writeln("  ✓ Columns: " + targetDoc.documentPreferences.columnCount + " (gutter: " + targetDoc.documentPreferences.columnGutter + ")");
+        } catch (debugErr) {
+            $.writeln("  Note: Some additional properties could not be displayed");
+        }
+        
+        $.writeln("  ✓ Measurement Units: " + targetDoc.viewPreferences.horizontalMeasurementUnits + " x " + targetDoc.viewPreferences.verticalMeasurementUnits);
+        $.writeln("=== END DOCUMENT SETUP VERIFICATION ===");
         
     } catch (e) {
         $.writeln("Warning: Could not copy all document settings: " + e);

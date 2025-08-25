@@ -176,20 +176,14 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         var st = grp.add('statictext', undefined, labelText); st.preferredSize.width = 80;
         var dd = grp.add('dropdownlist', undefined, ddItems); dd.preferredSize.width = 220;
         
-        // Debug logging for style selection
-        $.writeln("[DEBUG] addStyleRow - Label: '" + labelText + "', preselectText: '" + preselectText + "'");
-        $.writeln("[DEBUG] Available items in dropdown: [" + ddItems.join(', ') + "]");
-        
         // Priority-based selection: detected style > "— None —"
         var selectionMade = false;
         if (preselectText && preselectText !== null && preselectText !== '') {
             // Try to find and select the detected/preset style
             for (var i = 0; i < dd.items.length; i++) {
-                $.writeln("[DEBUG] Checking item " + i + ": '" + dd.items[i].text + "' vs preselectText: '" + preselectText + "'");
                 if (dd.items[i].text === preselectText) {
                     dd.selection = i;
                     selectionMade = true;
-                    $.writeln("[DEBUG] MATCH FOUND! Selected item " + i + ": '" + dd.items[i].text + "'");
                     break;
                 }
             }
@@ -198,7 +192,6 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         // If no style was selected (either no preselectText or style not found), select "— None —"
         if (!selectionMade) {
             dd.selection = 0; // "— None —" is always at index 0
-            $.writeln("[DEBUG] No match found, defaulting to '— None —' (index 0)");
         }
         
         return { group: grp, label: st, dropdown: dd };
@@ -226,32 +219,6 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         cellStyle: null
     };
     
-    // Debug logging for detected template styles
-    $.writeln("\n=== DETECTED TEMPLATE STYLES DEBUG ====");
-    $.writeln("detectedTemplateStyles parameter: " + (detectedTemplateStyles ? "[object]" : "null/undefined"));
-    if (detectedTemplateStyles) {
-        $.writeln("sessionTitle: '" + detectedTemplateStyles.sessionTitle + "'");
-        $.writeln("sessionTime: '" + detectedTemplateStyles.sessionTime + "'");
-        $.writeln("sessionNo: '" + detectedTemplateStyles.sessionNo + "'");
-        $.writeln("chairStyle: '" + detectedTemplateStyles.chairStyle + "'");
-        $.writeln("topicTime: '" + detectedTemplateStyles.topicTime + "'");
-        $.writeln("topicTitle: '" + detectedTemplateStyles.topicTitle + "'");
-        $.writeln("topicSpeaker: '" + detectedTemplateStyles.topicSpeaker + "'");
-        $.writeln("tableStyle: '" + detectedTemplateStyles.tableStyle + "'");
-        $.writeln("cellStyle: '" + detectedTemplateStyles.cellStyle + "'");
-    }
-    $.writeln("Final detectedStyles object:");
-    $.writeln("sessionTitle: '" + detectedStyles.sessionTitle + "'");
-    $.writeln("sessionTime: '" + detectedStyles.sessionTime + "'");
-    $.writeln("sessionNo: '" + detectedStyles.sessionNo + "'");
-    $.writeln("chairStyle: '" + detectedStyles.chairStyle + "'");
-    $.writeln("topicTime: '" + detectedStyles.topicTime + "'");
-    $.writeln("topicTitle: '" + detectedStyles.topicTitle + "'");
-    $.writeln("topicSpeaker: '" + detectedStyles.topicSpeaker + "'");
-    $.writeln("tableStyle: '" + detectedStyles.tableStyle + "'");
-    $.writeln("cellStyle: '" + detectedStyles.cellStyle + "'");
-    $.writeln("=== END DETECTED TEMPLATE STYLES DEBUG ====");
-
     // Session Fields
     var pnlSession = tab.add('panel', undefined, 'Session Fields');
     pnlSession.margins = [15, 15, 15, 15]; pnlSession.alignChildren = 'left';
@@ -531,19 +498,6 @@ function main() {
 
     // CRITICAL: Detect styles from original template BEFORE creating new document
     var detectedTemplateStyles = detectActiveStylesFromTemplateDoc(templateDoc);
-    
-    // Debug logging for detected template styles in main
-    $.writeln("\n=== MAIN FUNCTION - DETECTED TEMPLATE STYLES ====");
-    $.writeln("sessionTitle: '" + detectedTemplateStyles.sessionTitle + "'");
-    $.writeln("sessionTime: '" + detectedTemplateStyles.sessionTime + "'");
-    $.writeln("sessionNo: '" + detectedTemplateStyles.sessionNo + "'");
-    $.writeln("chairStyle: '" + detectedTemplateStyles.chairStyle + "'");
-    $.writeln("topicTime: '" + detectedTemplateStyles.topicTime + "'");
-    $.writeln("topicTitle: '" + detectedTemplateStyles.topicTitle + "'");
-    $.writeln("topicSpeaker: '" + detectedTemplateStyles.topicSpeaker + "'");
-    $.writeln("tableStyle: '" + detectedTemplateStyles.tableStyle + "'");
-    $.writeln("cellStyle: '" + detectedTemplateStyles.cellStyle + "'");
-    $.writeln("=== END MAIN FUNCTION DEBUG ====");
 
     // --- Create a new document from the template ---
     var doc = app.documents.add();
@@ -566,29 +520,21 @@ function main() {
     
     // CRITICAL: Re-verify and re-apply document setup after all page operations
     // Some InDesign operations (master copying, page duplication) can override document settings
-    $.writeln("\n=== RE-VERIFYING DOCUMENT SETUP AFTER PAGE OPERATIONS ===");
-    var currentFacingPages = doc.documentPreferences.facingPages;
-    var currentPageBinding = doc.documentPreferences.pageBinding;
-    var currentPageDirection = safeGetDocProperty(doc, 'pageDirection', 'N/A');
-    
-    $.writeln("Current settings after page operations:");
-    $.writeln("  - Facing Pages: " + currentFacingPages);
-    $.writeln("  - Page Binding: " + currentPageBinding);
-    $.writeln("  - Page Direction: " + currentPageDirection);
     
     // If settings changed, reapply them
     var sourceFacingPages = templateDoc.documentPreferences.facingPages;
     var sourcePageBinding = templateDoc.documentPreferences.pageBinding;
     var sourcePageDirection = safeGetDocProperty(templateDoc, 'pageDirection', 'N/A');
     
+    var currentFacingPages = doc.documentPreferences.facingPages;
+    var currentPageBinding = doc.documentPreferences.pageBinding;
+    var currentPageDirection = safeGetDocProperty(doc, 'pageDirection', 'N/A');
+    
     var facingPagesChanged = currentFacingPages !== sourceFacingPages;
     var pageBindingChanged = currentPageBinding !== sourcePageBinding;
     var pageDirectionChanged = (sourcePageDirection !== 'N/A') && (currentPageDirection !== sourcePageDirection);
     
     if (facingPagesChanged || pageBindingChanged || pageDirectionChanged) {
-        
-        $.writeln("\n*** DOCUMENT SETUP WAS CHANGED BY PAGE OPERATIONS - RE-APPLYING ***");
-        
         // Re-apply critical document setup settings
         doc.documentPreferences.facingPages = sourceFacingPages;
         doc.documentPreferences.pageBinding = sourcePageBinding;
@@ -596,17 +542,7 @@ function main() {
         if (sourcePageDirection !== 'N/A') {
             safeSetDocProperty(doc, 'pageDirection', sourcePageDirection);
         }
-        
-        $.writeln("Document setup re-applied:");
-        $.writeln("  ✓ Facing Pages: " + doc.documentPreferences.facingPages + " (restored from: " + sourceFacingPages + ")");
-        $.writeln("  ✓ Page Binding: " + doc.documentPreferences.pageBinding + " (restored from: " + sourcePageBinding + ")");
-        if (sourcePageDirection !== 'N/A') {
-            $.writeln("  ✓ Page Direction: " + safeGetDocProperty(doc, 'pageDirection', 'N/A') + " (restored from: " + sourcePageDirection + ")");
-        }
-    } else {
-        $.writeln("Document setup preserved correctly after page operations.");
     }
-    $.writeln("=== END DOCUMENT SETUP RE-VERIFICATION ===");
 
     // --- Detect layout capabilities of the template ---
     var hasIndependentTopicLayout = detectIndependentTopicSetup(doc.pages[0]);
@@ -657,7 +593,7 @@ function main() {
 
     // Ask if user wants to export a report
     if (confirm("Agenda created successfully!\n" + sessionsData.length + " sessions were imported.\n\nWould you like to export a report?")) {
-        var reportFile = exportReport(sessionsData);
+        var reportFile = exportReport(sessionsData, allOptions.reportOptions);
         if (reportFile) {
             alert("Report saved to:\n" + reportFile.fsName + 
                   "\n\nNote: You can now export and import all your layout settings\n" +
@@ -1098,24 +1034,12 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     btnExport.preferredSize.width = 150;
     
 
-    // Debugging & Troubleshooting
-    var pnlDebug = advancedTab.add('panel', undefined, 'Debugging & Troubleshooting');
-    pnlDebug.orientation = 'column';
-    pnlDebug.alignChildren = 'left';
-    pnlDebug.alignment = 'fill';
-    pnlDebug.margins = [15, 15, 15, 15];
-    var cbVerbose = pnlDebug.add('checkbox', undefined, 'Verbose console logging ($.writeln)'); cbVerbose.value = false;
-    var cbWarnAsAlerts = pnlDebug.add('checkbox', undefined, 'Show warnings as alerts'); cbWarnAsAlerts.value = false;
-    var cbValidatePlaceholders = pnlDebug.add('checkbox', undefined, 'Validate template placeholders on start'); cbValidatePlaceholders.value = true;
-    var cbStopOnError = pnlDebug.add('checkbox', undefined, 'Stop on first error'); cbStopOnError.value = false;
-
     // Report preferences
     var pnlReport = advancedTab.add('panel', undefined, 'Report Preferences');
     pnlReport.orientation = 'column';
     pnlReport.alignChildren = 'left';
     pnlReport.alignment = 'fill';
     pnlReport.margins = [15, 15, 15, 15];
-    var cbAutoOpenReport = pnlReport.add('checkbox', undefined, 'Auto-open report after generation'); cbAutoOpenReport.value = true;
     var cbReportImages = pnlReport.add('checkbox', undefined, 'Include image placement results'); cbReportImages.value = true;
     var cbReportOverset = pnlReport.add('checkbox', undefined, 'Include overset text summary'); cbReportOverset.value = true;
     var cbReportCounts = pnlReport.add('checkbox', undefined, 'Include session/topic counts'); cbReportCounts.value = true;
@@ -1134,7 +1058,7 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
         }
     };
     btnExport.onClick = function() {
-        var allSettings = collectAllSettings(contentTab, contentTab, formattingTab, formattingTab);
+        var allSettings = collectAllSettings(contentTab, contentTab, formattingTab, formattingTab, advancedTab);
         if (exportAllSettings(allSettings)) { alert('All settings exported successfully!'); }
     };
 
@@ -1143,11 +1067,6 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     // (Defaults section removed)
 
     // Expose advanced controls for potential future use
-    advancedTab.debugVerbose = cbVerbose;
-    advancedTab.debugWarnAsAlerts = cbWarnAsAlerts;
-    advancedTab.debugValidate = cbValidatePlaceholders;
-    advancedTab.debugStopOnError = cbStopOnError;
-    advancedTab.reportAutoOpen = cbAutoOpenReport;
     advancedTab.reportIncludeImages = cbReportImages;
     advancedTab.reportIncludeOverset = cbReportOverset;
     advancedTab.reportIncludeCounts = cbReportCounts;
@@ -1227,7 +1146,7 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     if (dlg.show() !== 1) return null;
     
     // Collect all settings and return using merged tabs
-    return collectAllSettings(contentTab, contentTab, formattingTab, formattingTab);
+    return collectAllSettings(contentTab, contentTab, formattingTab, formattingTab, advancedTab);
 }
 
 // CAD Info Tab: displays version info and CSV detection summary
@@ -1927,7 +1846,7 @@ function updateLineBreaksTabFromSettings(tab, settings) {
 
 // updateImageAutomationTabFromSettings function removed - functionality moved to chairpersons tab
 
-function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab) {
+function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab, advancedTab) {
     // Defensive helpers and defaults
     var defs = getDefaultSettings();
     function selIndex(dd, defIdx) { try { return (dd && dd.selection) ? dd.selection.index : defIdx; } catch (e) { return defIdx; } }
@@ -2026,11 +1945,19 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab) {
         }
     };
 
+    // Collect report options from advanced tab
+    var reportOptions = {
+        includeImages: getBool(advancedTab && advancedTab.reportIncludeImages, true),
+        includeOverset: getBool(advancedTab && advancedTab.reportIncludeOverset, true),
+        includeCounts: getBool(advancedTab && advancedTab.reportIncludeCounts, true)
+    };
+
     return {
         chairOptions: chairOptions,
         topicOptions: topicOptions,
         lineBreakOptions: lineBreakOptions,
-        stylesOptions: stylesOptions
+        stylesOptions: stylesOptions,
+        reportOptions: reportOptions
     };
 }
 
@@ -3261,7 +3188,7 @@ function jsonFromString(jsonString) {
 
 /* ---------------- EXPORT REPORT ---------------- */
 
-function exportReport(sessionsData) {
+function exportReport(sessionsData, reportOptions) {
     // Get a file path from the user with a default name
     var reportFilePath = File.saveDialog("Save Report As", "Text Files:*.txt");
     if (!reportFilePath) {
@@ -3286,6 +3213,11 @@ function exportReport(sessionsData) {
         return null;
     }
     
+    // Set default values if reportOptions is not provided
+    var includeOverset = reportOptions ? reportOptions.includeOverset : true;
+    var includeImages = reportOptions ? reportOptions.includeImages : true;
+    var includeCounts = reportOptions ? reportOptions.includeCounts : true;
+    
     // Write the report header
     reportFile.writeln("AGENDA IMPORT REPORT");
     reportFile.writeln("====================");
@@ -3293,7 +3225,8 @@ function exportReport(sessionsData) {
     reportFile.writeln("Sessions imported: " + sessionsData.length);
     reportFile.writeln("");
     
-    // Check for overset text errors
+    // Check for overset text errors (only if enabled in preferences)
+    if (includeOverset) {
     var doc = app.activeDocument;
     var oversetErrors = [];
     
@@ -3458,8 +3391,10 @@ function exportReport(sessionsData) {
     
     reportFile.writeln("\n=========================\n");
     
-    // Add image placement report if automation was used
-    if (imageResults.enabled) {
+    } // End of overset text check conditional
+    
+    // Add image placement report if automation was used and if enabled in preferences
+    if (includeImages && imageResults.enabled) {
         reportFile.writeln("IMAGE PLACEMENT REPORT:");
         reportFile.writeln("======================");
         reportFile.writeln("Image folder: " + imageResults.folder);
@@ -3494,6 +3429,8 @@ function exportReport(sessionsData) {
         reportFile.writeln("=========================\n");
     }
     
+    // Sessions report (only if enabled in preferences)
+    if (includeCounts) {
     reportFile.writeln("SESSIONS REPORT:");
     reportFile.writeln("=========================\n");
     
@@ -3515,6 +3452,8 @@ function exportReport(sessionsData) {
         
         reportFile.writeln("");
     }
+    
+    } // End of sessions report conditional
     
     // Ensure all data is written to the file
     reportFile.write(""); // Force flush

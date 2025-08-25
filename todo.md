@@ -40,8 +40,6 @@ v2.0
 // auto detect the style used
 // make the tab smart also hide elements that they arent in the csv with and remove its gap
 // the defult satae for drop list should be with this piririty: if it has style assigned to it, then it should be selected it no style then non is selected
-
-
 // --none-- shouldent reset the style it should preserve the elemnt styling but dont add it as a style only
 //  option to add paragraph style to the beaked line element. example the first style will be for all the text place holder the second style will be applied for the pragraph after the breakline
 
@@ -74,7 +72,6 @@ topics p style > topics Cell style > Topics Table style
 
 
 
-// auto detect created sessions and updated needed only if text changed, image, chair person added or removed session added or reve
 
 
 
@@ -86,7 +83,7 @@ topics p style > topics Cell style > Topics Table style
 // inline confg maybe add text frame option columns with line break
 // use windows explorer new ui to choose folder
 // plugin export ready to use excel/csv with all data
-
+// auto detect created sessions and updated needed only if text changed, image, chair person added or removed session added or reve
 // add ataglange mode
 --------------------------------------------------------------------------------------
 sessionTitle

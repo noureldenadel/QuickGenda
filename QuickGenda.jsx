@@ -172,6 +172,11 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     }
 
     function addStyleRow(parent, labelText, ddItems, preselectText) {
+        // DEBUG: Show what we're trying to select
+        alert("DEBUG: " + labelText + 
+              "\nTrying to select: '" + (preselectText || "NULL") + "'" +
+              "\nAvailable styles: [" + ddItems.join(", ") + "]");
+        
         var grp = parent.add('group'); grp.orientation = 'row'; grp.spacing = 8; grp.alignChildren = 'left';
         var st = grp.add('statictext', undefined, labelText); st.preferredSize.width = 80;
         var dd = grp.add('dropdownlist', undefined, ddItems); dd.preferredSize.width = 220;
@@ -184,14 +189,20 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
                 if (dd.items[i].text === preselectText) {
                     dd.selection = i;
                     selectionMade = true;
+                    alert("SUCCESS: Found '" + preselectText + "' at index " + i);
                     break;
                 }
+            }
+            
+            if (!selectionMade) {
+                alert("FAILED: Style '" + preselectText + "' not found in available styles!");
             }
         }
         
         // If no style was selected (either no preselectText or style not found), select "— None —"
         if (!selectionMade) {
             dd.selection = 0; // "— None —" is always at index 0
+            alert("FALLBACK: Selected '— None —' (index 0)");
         }
         
         return { group: grp, label: st, dropdown: dd };
@@ -225,17 +236,17 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     var paraItems = getParagraphStyleNames();
 
     var rowTitle = addStyleRow(pnlSession, 'Title:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.titlePara : detectedStyles.sessionTitle);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.session && defaultSettings.stylesOptions.session.titlePara) ? defaultSettings.stylesOptions.session.titlePara : detectedStyles.sessionTitle);
     var brTitle = addBreakControlsInline(rowTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTitle'] ? defaultSettings.lineBreaks['SessionTitle'].character : '|');
 
     var rowTime = addStyleRow(pnlSession, 'Time:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.timePara : detectedStyles.sessionTime);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.session && defaultSettings.stylesOptions.session.timePara) ? defaultSettings.stylesOptions.session.timePara : detectedStyles.sessionTime);
     var brTime = addBreakControlsInline(rowTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionTime'] ? defaultSettings.lineBreaks['SessionTime'].character : '|');
 
     var rowNo = addStyleRow(pnlSession, 'Number:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.session ? defaultSettings.stylesOptions.session.noPara : detectedStyles.sessionNo);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.session && defaultSettings.stylesOptions.session.noPara) ? defaultSettings.stylesOptions.session.noPara : detectedStyles.sessionNo);
     var brNo = addBreakControlsInline(rowNo.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['SessionNo'] ? defaultSettings.lineBreaks['SessionNo'].character : '|');
 
@@ -243,7 +254,7 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     var pnlChair = tab.add('panel', undefined, 'Chairpersons');
     pnlChair.margins = [15, 15, 15, 15]; pnlChair.alignChildren = 'left';
     var rowChair = addStyleRow(pnlChair, 'Style:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair ? defaultSettings.stylesOptions.chair.style : detectedStyles.chairStyle);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.chair && defaultSettings.stylesOptions.chair.style) ? defaultSettings.stylesOptions.chair.style : detectedStyles.chairStyle);
     var brChair = addBreakControlsInline(rowChair.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['Chairpersons'] ? defaultSettings.lineBreaks['Chairpersons'].character : '||');
 
@@ -253,22 +264,22 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     var tableItems = getTableStyleNames();
     var cellItems = getCellStyleNames();
     var rowTbl = addStyleRow(pnlTopics, 'Table:', tableItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.tableStyle : detectedStyles.tableStyle);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.table && defaultSettings.stylesOptions.table.tableStyle) ? defaultSettings.stylesOptions.table.tableStyle : detectedStyles.tableStyle);
     var rowCell = addStyleRow(pnlTopics, 'Cells:', cellItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.table ? defaultSettings.stylesOptions.table.cellStyle : detectedStyles.cellStyle);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.table && defaultSettings.stylesOptions.table.cellStyle) ? defaultSettings.stylesOptions.table.cellStyle : detectedStyles.cellStyle);
 
     var rowTopicTime = addStyleRow(pnlTopics, 'Time:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.timePara : detectedStyles.topicTime);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent && defaultSettings.stylesOptions.topicsIndependent.timePara) ? defaultSettings.stylesOptions.topicsIndependent.timePara : detectedStyles.topicTime);
     var brTopicTime = addBreakControlsInline(rowTopicTime.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTime'] ? defaultSettings.lineBreaks['topicTime'].character : '|');
 
     var rowTopicTitle = addStyleRow(pnlTopics, 'Title:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.titlePara : detectedStyles.topicTitle);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent && defaultSettings.stylesOptions.topicsIndependent.titlePara) ? defaultSettings.stylesOptions.topicsIndependent.titlePara : detectedStyles.topicTitle);
     var brTopicTitle = addBreakControlsInline(rowTopicTitle.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicTitle'] ? defaultSettings.lineBreaks['topicTitle'].character : '|');
 
     var rowTopicSpeaker = addStyleRow(pnlTopics, 'Speaker:', paraItems, 
-        defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : detectedStyles.topicSpeaker);
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.topicsIndependent && defaultSettings.stylesOptions.topicsIndependent.speakerPara) ? defaultSettings.stylesOptions.topicsIndependent.speakerPara : detectedStyles.topicSpeaker);
     var brTopicSpeaker = addBreakControlsInline(rowTopicSpeaker.group, defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].enabled : false,
         defaultSettings.lineBreaks && defaultSettings.lineBreaks['topicSpeaker'] ? defaultSettings.lineBreaks['topicSpeaker'].character : '|');
 
@@ -1207,7 +1218,7 @@ function setupCADInfoTab(tab, csvInfo, analysis, onApplySuggested) {
     pnlTemplate.alignChildren = 'fill';
     function yn(vTrue) { return vTrue ? 'Yes' : 'No'; }
     var g1 = pnlTemplate.add('group'); g1.orientation = 'row'; g1.spacing = 10; g1.alignment = 'left'; var g1l = g1.add('statictext', undefined, 'Supports table layout:'); g1l.preferredSize.width = 200; var g1v = g1.add('statictext', undefined, yn(analysis && analysis.supportsTable)); g1v.alignment = 'left';
-    var g2 = pnlTemplate.add('group'); g2.orientation = 'row'; g2.spacing = 10; g2.alignment = 'left'; var g2l = g2.add('statictext', undefined, 'Supports independent layout:'); g2l.preferredSize.width = 200; var g2v = g2.add('statictext', undefined, yn(analysis && analysis.supportsIndependent)); g2v.alignment = 'left';
+    var g2 = pnlTemplate.add('group'); g2.orientation = 'row'; g2.spacing = 10; g2.alignment = 'left'; var g2l = g2.add('statictext', undefined, 'Supports indie layout:'); g2l.preferredSize.width = 200; var g2v = g2.add('statictext', undefined, yn(analysis && analysis.supportsIndependent)); g2v.alignment = 'left';
     var g3 = pnlTemplate.add('group'); g3.orientation = 'row'; g3.spacing = 10; g3.alignment = 'left'; var g3l = g3.add('statictext', undefined, 'Image automation available:'); g3l.preferredSize.width = 200; var g3v = g3.add('statictext', undefined, yn(analysis && analysis.imageAutomationAvailable)); g3v.alignment = 'left';
 
     // CSV format help (moved from Content -> Chairpersons to Overview)
@@ -1846,7 +1857,7 @@ function updateLineBreaksTabFromSettings(tab, settings) {
 
 // updateImageAutomationTabFromSettings function removed - functionality moved to chairpersons tab
 
-function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab, advancedTab) {
+function collectAllSettings(chairTab, topicTab, lineBreakTab, formattingTab, advancedTab) {
     // Defensive helpers and defaults
     var defs = getDefaultSettings();
     function selIndex(dd, defIdx) { try { return (dd && dd.selection) ? dd.selection.index : defIdx; } catch (e) { return defIdx; } }
@@ -1927,21 +1938,21 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, stylesTab, advance
     function val(dd) { return (dd && dd.selection) ? (dd.selection.index === 0 ? '' : dd.selection.text) : ''; }
     var stylesOptions = {
         table: {
-            tableStyle: val(stylesTab && stylesTab.ddTableStyle),
-            cellStyle: val(stylesTab && stylesTab.ddCellStyle)
+            tableStyle: val(formattingTab && formattingTab.ddTableStyle),
+            cellStyle: val(formattingTab && formattingTab.ddCellStyle)
         },
         session: {
-            titlePara: val(stylesTab && stylesTab.ddSessionTitle),
-            timePara: val(stylesTab && stylesTab.ddSessionTime),
-            noPara: val(stylesTab && stylesTab.ddSessionNo)
+            titlePara: val(formattingTab && formattingTab.ddSessionTitle),
+            timePara: val(formattingTab && formattingTab.ddSessionTime),
+            noPara: val(formattingTab && formattingTab.ddSessionNo)
         },
         chair: {
-            style: val(stylesTab && stylesTab.ddChair)
+            style: val(formattingTab && formattingTab.ddChair)
         },
         topicsIndependent: {
-            timePara: val(stylesTab && stylesTab.ddTopicTime),
-            titlePara: val(stylesTab && stylesTab.ddTopicTitle),
-            speakerPara: val(stylesTab && stylesTab.ddTopicSpeaker)
+            timePara: val(formattingTab && formattingTab.ddTopicTime),
+            titlePara: val(formattingTab && formattingTab.ddTopicTitle),
+            speakerPara: val(formattingTab && formattingTab.ddTopicSpeaker)
         }
     };
 
@@ -3079,8 +3090,7 @@ function getDefaultSettings() {
                 noPara: ''
             },
             chair: {
-                inlinePara: '',
-                gridPara: ''
+                style: ''
             },
             topicsIndependent: {
                 timePara: '',
@@ -3565,8 +3575,6 @@ function setupStylesTab(tab, defaultSettings, hasIndependentLayout, hasTableLayo
     tab.ddSessionTitle = ddSessionTitle;
     tab.ddSessionTime = ddSessionTime;
     tab.ddSessionNo = ddSessionNo;
-    tab.ddChairInline = ddChairInline;
-    tab.ddChairGrid = ddChairGrid;
     tab.ddTableStyle = ddTableStyle;
     tab.ddCellStyle = ddCellStyle;
     tab.ddTopicTime = ddTopicTime;
@@ -3585,8 +3593,7 @@ function setupStylesTab(tab, defaultSettings, hasIndependentLayout, hasTableLayo
         selectDropdownByText(ddSessionNo, s.session.noPara);
     }
     if (s.chair) {
-        selectDropdownByText(ddChairInline, s.chair.inlinePara);
-        selectDropdownByText(ddChairGrid, s.chair.gridPara);
+        selectDropdownByText(ddChair, s.chair.style);
     }
     if (s.topicsIndependent) {
         selectDropdownByText(ddTopicTime, s.topicsIndependent.timePara);

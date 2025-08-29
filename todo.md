@@ -66,15 +66,6 @@ v2.0
 
 
 
-Section Dropdown Checkboxes text input field panel section scroll list  radio btn
-header p style > header Cell style
-topics p style > topics Cell style > Topics Table style
-
-
-
-
-
-
 --------------------------------------------------------------------------------------
 // convert to plugin + some identity
 // update one page only option
@@ -98,6 +89,9 @@ chairAvatar
 chairFlag
 
 
+Section Dropdown Checkboxes text input field panel section scroll list  radio btn
+header p style > header Cell style
+topics p style > topics Cell style > Topics Table style
 
 
 

@@ -37,12 +37,15 @@ v2.0
 //  code refactoring for the units feature
 // copy document setup info
 //  remove all unnessacry in drop list 
+// --none-- shouldent reset the style it should preserve the elemnt styling but dont add it as a style only
+
+
+
+
+//  option to add paragraph style to the beaked line element. example the first style will be for all the text place holder the second style will be applied for the pragraph after the breakline
+// the defult satae for drop list should be with this piririty: if it has style assigned to it, then it should be selected it no style then non is selected
 // auto detect the style used
 // make the tab smart also hide elements that they arent in the csv with and remove its gap
-// the defult satae for drop list should be with this piririty: if it has style assigned to it, then it should be selected it no style then non is selected
-// --none-- shouldent reset the style it should preserve the elemnt styling but dont add it as a style only
-//  option to add paragraph style to the beaked line element. example the first style will be for all the text place holder the second style will be applied for the pragraph after the breakline
-
 
 
 

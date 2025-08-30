@@ -1,5 +1,4 @@
 # QuickGenda v2.0
-# Created by noorr @2025
 
 **Professional InDesign Script for Automated Conference Agenda Generation**
 

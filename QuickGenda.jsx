@@ -1,50 +1,6 @@
-// QuickGenda (v2.0 - Styling and Layout)
+// QuickGenda (v2.0)
 // Date: August 22, 2025
 // Author: noorr
-// 
-// ** SUPPORTED CSV STRUCTURE **
-// ============================
-// Required Fields:
-// • "Session Title" - Primary session identifier
-// 
-// Optional Fields:
-// • "Session Time" - Session timing information
-// • "Session No" - Session numbering/identification
-// • "Chairpersons" - Session chairpersons (|| separated)
-// • "Time" - Individual topic timing
-// • "Topic Title" - Topic description
-// • "Speaker" - Topic presenter information
-// 
-// ** TEMPLATE REQUIREMENTS **
-// ===========================
-// 
-// Essential Labels:
-// • sessionTitle - Session title text frame
-// • sessionTime - Session time text frame
-// • sessionNo - Session number text frame
-// • chairpersons - Chairpersons text frame or group prototype
-// • topicsTable - Topics table frame (for table layout)
-// 
-// Topic Layout Labels (Independent mode):
-// • topicTime - Topic time text frame
-// • topicTitle - Topic title text frame  
-// • topicSpeaker - Topic speaker text frame
-// 
-// Image Automation Labels (Optional):
-// • chairAvatar - Avatar image frame within chairperson groups
-// • chairFlag - Flag image frame within chairperson groups
-// 
-// ** VERSION HISTORY **
-// ====================
-// v1.0 (August 17, 2025) - Initial Professional Release
-//   • Complete rewrite and optimization
-//   • Unified settings management system
-//   • Advanced image automation
-//   • Comprehensive error handling
-//   • Professional reporting system
-//   • Enterprise-grade template management
-// v2.0 (August 22, 2025) - Bug fixes and improvements
-//   • Copy Parent page elements to new document
 #target indesign
 
 // Define script version for UI display
@@ -613,8 +569,7 @@ function createCellStyleIfMissing(name, props) {
 }
 
 // Ensure a baseline set of default styles exists; returns names used
-// ensureDefaultStyles function removed - auto-style creation feature disabled
-// Manual style creation is still available through the UI
+
 
 
 /* ---------------- LAYOUT DETECTION ---------------- */
@@ -2077,7 +2032,7 @@ function updateLineBreaksTabFromSettings(tab, settings) {
     }
 }
 
-// updateImageAutomationTabFromSettings function removed - functionality moved to chairpersons tab
+
 
 function collectAllSettings(chairTab, topicTab, lineBreakTab, formattingTab, advancedTab) {
     // Defensive helpers and defaults
@@ -2253,11 +2208,7 @@ function exportAllSettings(allSettings) {
 
 /* ---------------- UTILITY FUNCTIONS ---------------- */
 
-// Old getLineBreakOptions function removed - replaced by unified settings panel
 
-// Old getChairLayoutOptions function removed - replaced by unified settings panel
-
-// Old getTopicLayoutOptions function removed - replaced by unified settings panel
 
 // Parse strings like "8pt", "5 mm", "10.5cm" => { value: 8, unit: 'pt' }
 function parseValueWithUnit(txt, defaultUnit) {
@@ -3515,12 +3466,6 @@ function getDefaultSettings() {
         }
     };
 }
-
-
-// Old exportSettings function removed - replaced by centralized function in unified panel
-
-
-// Old importSettings function removed - replaced by centralized function in unified panel
 
 /**
  * Convert settings object to JSON string

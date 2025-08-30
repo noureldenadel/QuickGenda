@@ -1,4 +1,4 @@
-# QuickGenda v1.0
+# QuickGenda v2.0
 # Created by noorr @2025
 
 **Professional InDesign Script for Automated Conference Agenda Generation**
@@ -10,7 +10,7 @@ Transform your CSV data into beautifully formatted InDesign agendas with intelli
 1. **Prepare your InDesign template** with labeled placeholders
 2. **Format your CSV data** according to the specifications below
 3. **Run the script** in InDesign with your template open
-4. **Configure layout options** in the QuickGenda Configuration panel
+4. **Configure layout and styling options** in the QuickGenda Configuration panel
 5. **Import your CSV** and let QuickGenda do the rest!
 
 ## 📋 System Requirements
@@ -135,16 +135,25 @@ QuickGenda automatically strips academic titles:
 - Apply to session info, chairpersons, or topic data
 - Configurable per field type
 
+### Styling Options
+- **Paragraph Styles:** Apply predefined paragraph styles to session titles, times, numbers, chairpersons, and topic fields
+- **Table Styles:** Apply table styles to topics table layout
+- **Cell Styles:** Apply cell styles to topics table layout
+- **Style Creation:** Create new paragraph, table, or cell styles directly from the configuration panel
+- **Auto-Detection:** Automatically detect and pre-select styles from your template document
+
 ## 🚀 Usage Instructions
 
 1. **Open your template** in InDesign with proper labels
-2. **Run the script:** File → Scripts → Scripts Panel → SmartAgenda_Creator.jsx
+2. **Run the script:** File → Scripts → Scripts Panel → QuickGenda.jsx
 3. **Select your CSV file** when prompted
 4. **Review detected fields** in the confirmation dialog
-5. **Configure layout options** in the QuickGenda Configuration panel:
+5. **Configure layout and styling options** in the QuickGenda Configuration panel:
    - Set chairperson layout (inline/grid)
    - Choose topic layout (table/independent)  
    - Configure line break replacements
+   - Apply paragraph, table, and cell styles
+   - Create new styles directly in the panel
    - Enable image automation if desired
 6. **Click OK** to generate your agenda
 7. **Review the report** for any issues or missing images
@@ -156,6 +165,7 @@ QuickGenda generates comprehensive reports including:
 - ⚠️ **Overset text alerts** - text that doesn't fit in frames
 - 🖼️ **Image placement results** - successful and failed image placements
 - 📝 **Missing image details** - what files were searched for
+- 🎨 **Applied styles report** - paragraph, table, and cell styles used
 - 🔍 **Troubleshooting info** - detailed error information
 
 ## 🛠️ Troubleshooting
@@ -209,6 +219,25 @@ QuickGenda generates comprehensive reports including:
 - Keep images in dedicated folder
 - Use high-quality images (300+ DPI)
 - Maintain consistent aspect ratios
+
+## 🔄 Version History
+
+### v2.0 (August 22, 2025)
+- **Enhanced Styling System:** Apply paragraph, table, and cell styles directly from the configuration panel
+- **Style Auto-Detection:** Automatically detect and pre-select styles from template documents
+- **Inline Style Creation:** Create new styles without leaving the configuration panel
+- **Copy Parent Page Elements:** Preserve master page elements when duplicating pages
+- **Improved UI:** Unified configuration panel with better organization
+- **Bug Fixes:** Various stability improvements and error handling
+
+### v1.0 (August 17, 2025)
+- Initial Professional Release
+- Complete rewrite and optimization
+- Unified settings management system
+- Advanced image automation
+- Comprehensive error handling
+- Professional reporting system
+- Enterprise-grade template management
 
 ## ⚙️ Support & Updates
 

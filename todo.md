@@ -1,7 +1,3 @@
-
-
-
-
 --------------------------------------------------------------------------------------
 // convert to plugin + some identity
 // update one page only option

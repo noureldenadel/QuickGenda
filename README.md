@@ -247,4 +247,8 @@ QuickGenda generates comprehensive reports including:
 
 ---
 
+<<<<<<< HEAD
 **QuickGenda** - Transform your conference planning workflow with intelligent automation.
+=======
+**SmartAgenda Creator** - Transform your conference planning workflow with intelligent automation.
+>>>>>>> 9b0da5432bd44a3b1b12b0e91a8b65ad2ae4f54d

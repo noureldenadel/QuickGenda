@@ -38,15 +38,32 @@ v2.0
 // copy document setup info
 //  remove all unnessacry in drop list 
 // --none-- shouldent reset the style it should preserve the elemnt styling but dont add it as a style only
-
-
-
-
 //  option to add paragraph style to the beaked line element. example the first style will be for all the text place holder the second style will be applied for the pragraph after the breakline
 // the defult satae for drop list should be with this piririty: if it has style assigned to it, then it should be selected it no style then non is selected
 // auto detect the style used
 // make the tab smart also hide elements that they arent in the csv with and remove its gap
 
+
+
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------
+// convert to plugin + some identity
+// update one page only option
+// test preview
+// change dependency to excel also and no BOM
+// inline confg maybe add text frame option columns with line break
+// use windows explorer new ui to choose folder
+// plugin export ready to use excel/csv with all data
+// auto detect created sessions and updated needed only if text changed, image, chair person added or removed session added or reve
+// add ataglange mode
 
 
 //  Phase 5: Add advanced features (column-specific styles, style preview + breaklines stylings)
@@ -64,21 +81,6 @@ v2.0
 //  table overseat check box to new page or keep overseats
 // cell vetical size automate
 // auto fit the text placeholder to fit the max rows in one page
-
-
-
-
-
---------------------------------------------------------------------------------------
-// convert to plugin + some identity
-// update one page only option
-// test preview
-// change dependency to excel also and no BOM
-// inline confg maybe add text frame option columns with line break
-// use windows explorer new ui to choose folder
-// plugin export ready to use excel/csv with all data
-// auto detect created sessions and updated needed only if text changed, image, chair person added or removed session added or reve
-// add ataglange mode
 --------------------------------------------------------------------------------------
 sessionTitle
 sessionNo

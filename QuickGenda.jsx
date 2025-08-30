@@ -52,7 +52,7 @@ var SCRIPT_VERSION = "v2.0 (August 22, 2025)";
 
 // ===================== FORMATTING TAB (COMBINED) =====================
 // Top-level definition so it is available to getUnifiedSettingsPanel
-function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields, detectedTemplateStyles) {
+function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, hasTableLayout, availableFields, detectedTemplateStyles, templatePage) {
     tab.alignChildren = 'fill';
     tab.margins = [16, 16, 16, 16]; // 4px spacing system compliance
 
@@ -162,8 +162,9 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         topicTitle: null,
         topicSpeaker: null,
         tableStyle: null,
-        cellStyle: null
-    };
+    cellStyle: null,
+    tablePara: null
+};
     
     // Single Fields Panel containing all field types
     var pnlFields = tab.add('panel', undefined, 'Fields');
@@ -221,6 +222,11 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         (defaultSettings.stylesOptions && defaultSettings.stylesOptions.table && defaultSettings.stylesOptions.table.cellStyle) ? defaultSettings.stylesOptions.table.cellStyle : detectedStyles.cellStyle,
         false, '', true);
 
+    var rowTablePara = addStyleRow(pnlFields, 'Table Paragraph:', paraItems, 
+        (defaultSettings.stylesOptions && defaultSettings.stylesOptions.table && defaultSettings.stylesOptions.table.tablePara) ? defaultSettings.stylesOptions.table.tablePara : detectedStyles.tablePara,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['tablePara'] ? defaultSettings.lineBreaks['tablePara'].enabled : false,
+        defaultSettings.lineBreaks && defaultSettings.lineBreaks['tablePara'] ? defaultSettings.lineBreaks['tablePara'].character : '|');
+
     // Create New Style Panel
     var pnlNewStyle = tab.add('panel', undefined, 'Create New Style');
     pnlNewStyle.alignChildren = 'left';
@@ -233,7 +239,7 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     
     grpNewStyle.add('statictext', undefined, 'Name:').preferredSize.width = 50;
     var etNewStyleName = grpNewStyle.add('edittext', undefined, ''); 
-    etNewStyleName.characters = 20;
+    etNewStyleName.characters = 16;
     
     grpNewStyle.add('statictext', undefined, 'Type:').preferredSize.width = 35;
     var ddNewStyleType = grpNewStyle.add('dropdownlist', undefined, ['Paragraph', 'Table', 'Cell']); 
@@ -255,7 +261,7 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
                 app.activeDocument.paragraphStyles.add({name: name}); 
             } else if (type === 'Table') { 
                 app.activeDocument.tableStyles.add({name: name}); 
-            } else { 
+            } else {
                 app.activeDocument.cellStyles.add({name: name}); 
             }
             etNewStyleName.text = '';
@@ -277,7 +283,7 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
             repop(rowTitle.dropdown, pItems); repop(rowTime.dropdown, pItems); repop(rowNo.dropdown, pItems);
             repop(rowChair.dropdown, pItems);  // Updated to use single chair dropdown
             repop(rowTopicTime.dropdown, pItems); repop(rowTopicTitle.dropdown, pItems); repop(rowTopicSpeaker.dropdown, pItems);
-            repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems);
+            repop(rowTbl.dropdown, tItems); repop(rowCell.dropdown, cItems); repop(rowTablePara.dropdown, pItems);
             
             // Don't auto-select the newly created style in any dropdown
             // User should manually select the style they want to apply
@@ -285,6 +291,42 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
             alert('Failed to create style: ' + e); 
         }
     };
+    
+    // Helper: refresh all dropdowns from current doc styles
+    function refreshStyleDropdowns() {
+        try {
+            var pItems = getParagraphStyleNames();
+            var tItems = getTableStyleNames();
+            var cItems = getCellStyleNames();
+            
+            function repop(dd, items){ 
+                if (!dd) return; 
+                var sel = (dd.selection && dd.selection.text) ? dd.selection.text : null; 
+                dd.removeAll(); 
+                for (var i=0;i<items.length;i++) dd.add('item', items[i]); 
+                dd.selection = sel ? (function(){ 
+                    for (var j=0;j<dd.items.length;j++){ 
+                        if(dd.items[j].text===sel) return j;
+                    } 
+                    return 0;
+                })() : 0; 
+            }
+            
+            repop(rowTitle.dropdown, pItems);
+            repop(rowTime.dropdown, pItems);
+            repop(rowNo.dropdown, pItems);
+            repop(rowChair.dropdown, pItems);
+            repop(rowTopicTime.dropdown, pItems);
+            repop(rowTopicTitle.dropdown, pItems);
+            repop(rowTopicSpeaker.dropdown, pItems);
+            repop(rowTbl.dropdown, tItems);
+            repop(rowCell.dropdown, cItems);
+            repop(rowTablePara.dropdown, pItems);
+        } catch (e) {}
+    }
+    
+    // Expose the refresh function so it can be called from outside
+    tab.refreshStyleDropdowns = refreshStyleDropdowns;
 
     // Smart hiding of elements based on CSV availability and layout capabilities
     // Helper functions for proper gap-free layout management
@@ -332,29 +374,31 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     ensureCollapsible(pnlFields);
     
     try {
-        if (availableFields) {
-            // Hide individual session fields that aren't in CSV
-            if (!availableFields['Session Title']) { 
+        if (availableFields && templatePage) {
+            // Hide individual session fields that aren't in CSV or don't have placeholders on the page
+            if (!availableFields['Session Title'] || !findItemByLabel(templatePage, 'sessionTitle')) { 
                 setCollapsed(rowTitle.group, true); 
             }
-            if (!availableFields['Session Time']) { 
+            if (!availableFields['Session Time'] || !findItemByLabel(templatePage, 'sessionTime')) { 
                 setCollapsed(rowTime.group, true); 
             }
-            if (!availableFields['Session No']) { 
+            if (!availableFields['Session No'] || !findItemByLabel(templatePage, 'sessionNo')) { 
                 setCollapsed(rowNo.group, true); 
             }
             
-            // Hide Chairpersons if not in CSV
-            if (!availableFields['Chairpersons']) { setCollapsed(rowChair.group, true); }
+            // Hide Chairpersons if not in CSV or no placeholder on page
+            if (!availableFields['Chairpersons'] || !findItemByLabel(templatePage, 'chairpersons')) { 
+                setCollapsed(rowChair.group, true); 
+            }
             
-            // Hide individual topic fields that aren't in CSV
-            if (!availableFields['Time']) { 
+            // Hide individual topic fields that aren't in CSV or don't have placeholders on the page
+            if (!availableFields['Time'] || !findItemByLabel(templatePage, 'topicTime')) { 
                 setCollapsed(rowTopicTime.group, true); 
             }
-            if (!availableFields['Topic Title']) { 
+            if (!availableFields['Topic Title'] || !findItemByLabel(templatePage, 'topicTitle')) { 
                 setCollapsed(rowTopicTitle.group, true); 
             }
-            if (!availableFields['Speaker']) { 
+            if (!availableFields['Speaker'] || !findItemByLabel(templatePage, 'topicSpeaker')) { 
                 setCollapsed(rowTopicSpeaker.group, true); 
             }
         }
@@ -363,6 +407,7 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
         if (!hasTableLayout) { 
             setCollapsed(rowTbl.group, true); 
             setCollapsed(rowCell.group, true); 
+            setCollapsed(rowTablePara.group, true);
         }
         
         // Hide independent topic fields if layout not supported
@@ -387,6 +432,7 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     tab.ddTopicTime = rowTopicTime.dropdown;
     tab.ddTopicTitle = rowTopicTitle.dropdown;
     tab.ddTopicSpeaker = rowTopicSpeaker.dropdown;
+    tab.ddTablePara = rowTablePara.dropdown;
 
     tab.sessionControls = {
         'SessionTitle': { checkbox: rowTitle.breakControls.checkbox, charInput: rowTitle.breakControls.charInput },
@@ -399,8 +445,10 @@ function setupFormattingCombinedTab(tab, defaultSettings, hasIndependentLayout, 
     tab.topicControls = {
         'topicTime': { checkbox: rowTopicTime.breakControls.checkbox, charInput: rowTopicTime.breakControls.charInput },
         'topicTitle': { checkbox: rowTopicTitle.breakControls.checkbox, charInput: rowTopicTitle.breakControls.charInput },
-        'topicSpeaker': { checkbox: rowTopicSpeaker.breakControls.checkbox, charInput: rowTopicSpeaker.breakControls.charInput }
-    };}
+        'topicSpeaker': { checkbox: rowTopicSpeaker.breakControls.checkbox, charInput: rowTopicSpeaker.breakControls.charInput },
+        'tablePara': { checkbox: rowTablePara.breakControls.checkbox, charInput: rowTablePara.breakControls.charInput }
+    };
+}
 
 function main() {
     if (app.documents.length === 0) {
@@ -507,7 +555,7 @@ function main() {
 
     // Ask if user wants to export a report
     if (confirm("Agenda created successfully!\n" + sessionsData.length + " sessions were imported.\n\nWould you like to export a report?")) {
-        var reportFile = exportReport(sessionsData, allOptions.reportOptions);
+        var reportFile = exportReport(sessionsData, allOptions.reportOptions, allOptions.stylesOptions, allOptions.lineBreakOptions);
         if (reportFile) {
             alert("Report saved to:\n" + reportFile.fsName + 
                   "\n\nNote: You can now export and import all your layout settings\n" +
@@ -925,6 +973,14 @@ function detectActiveStylesFromTemplateDoc(templateDoc) {
                     activeStyles.cellStyle = cellStyleName;
                 }
             }
+
+            // Get paragraph style from first cell's content
+            if (table.cells.length > 0 && table.cells[0].paragraphs.length > 0 && table.cells[0].paragraphs[0].appliedParagraphStyle && table.cells[0].paragraphs[0].appliedParagraphStyle.name) {
+                var paraStyleName = table.cells[0].paragraphs[0].appliedParagraphStyle.name;
+                if (paraStyleName && paraStyleName !== '[Basic Paragraph]' && paraStyleName.charAt(0) !== '[') {
+                    activeStyles.tablePara = paraStyleName;
+                }
+            }
         }
         
     } catch (e) {
@@ -1130,12 +1186,12 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     if (!defaultSettings.stylesOptions.topicsIndependent) defaultSettings.stylesOptions.topicsIndependent = defaultSettings.stylesOptions.topicsIndependent || {};
     var dlg = new Window('dialog', 'QuickGenda - Configuration');
     dlg.alignChildren = 'fill';
-    dlg.preferredSize.width = 600;
+    dlg.preferredSize.width = 500;
     dlg.preferredSize.height = 700;
     
     // Navigation tabs
     var tabGroup = dlg.add('tabbedpanel');
-    tabGroup.preferredSize.width = 580;
+    tabGroup.preferredSize.width = 480;
     tabGroup.preferredSize.height = 600;
     
     // New tab order and names
@@ -1190,7 +1246,8 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
         hasIndependentTopicLayout,
         hasTableTopicLayout,
         availableFields,
-        detectedTemplateStyles
+        detectedTemplateStyles,
+        app.activeDocument.pages[0]
     );
     
     // ===== ADVANCED: CENTRALIZED SETTINGS MANAGEMENT =====
@@ -1215,6 +1272,8 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     var cbReportImages = pnlReport.add('checkbox', undefined, 'Include image placement results'); cbReportImages.value = true;
     var cbReportOverset = pnlReport.add('checkbox', undefined, 'Include overset text summary'); cbReportOverset.value = true;
     var cbReportCounts = pnlReport.add('checkbox', undefined, 'Include session/topic counts'); cbReportCounts.value = true;
+    var cbReportFormatting = pnlReport.add('checkbox', undefined, 'Include formatting details'); cbReportFormatting.value = true;
+    var cbReportLineBreaks = pnlReport.add('checkbox', undefined, 'Include line break information'); cbReportLineBreaks.value = true;
 
     // (Profiles feature removed)
 
@@ -1242,6 +1301,8 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
     advancedTab.reportIncludeImages = cbReportImages;
     advancedTab.reportIncludeOverset = cbReportOverset;
     advancedTab.reportIncludeCounts = cbReportCounts;
+    advancedTab.reportIncludeFormatting = cbReportFormatting;
+    advancedTab.reportIncludeLineBreaks = cbReportLineBreaks;
 
     // (No profiles to initialize)
     
@@ -1257,7 +1318,7 @@ function getUnifiedSettingsPanel(hasIndependentTopicLayout, hasTableTopicLayout,
 
     // Add invisible spacer with fixed width to push buttons right
     var spacer = grpBtns.add('statictext', undefined, '');
-    spacer.preferredSize.width = 350; // Adjust this number to control spacing
+    spacer.preferredSize.width = 250; // Adjust this number to control spacing
 
     // Add buttons directly to main group (not sub-group)
     var btnOK = grpBtns.add('button', undefined, 'OK');
@@ -1371,7 +1432,7 @@ function setupCADInfoTab(tab, csvInfo, analysis, onApplySuggested) {
         // fallback
         lbFields.preferredSize.height = 180;
     }
-    try { lbFields.preferredSize.width = 520; } catch (e) {}
+    try { lbFields.preferredSize.width = 350; } catch (e) {}
 
     // Template Analysis
     var pnlTemplate = tab.add('panel', undefined, 'Template Analysis');
@@ -2101,9 +2162,10 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, formattingTab, adv
     }
     var stylesOptions = {
         table: {
-            tableStyle: val(formattingTab && formattingTab.ddTableStyle),
-            cellStyle: val(formattingTab && formattingTab.ddCellStyle)
-        },
+        tableStyle: val(formattingTab && formattingTab.ddTableStyle),
+        cellStyle: val(formattingTab && formattingTab.ddCellStyle),
+        tablePara: val(formattingTab && formattingTab.ddTablePara)
+    },
         session: {
             titlePara: val(formattingTab && formattingTab.ddSessionTitle),
             timePara: val(formattingTab && formattingTab.ddSessionTime),
@@ -2123,7 +2185,9 @@ function collectAllSettings(chairTab, topicTab, lineBreakTab, formattingTab, adv
     var reportOptions = {
         includeImages: getBool(advancedTab && advancedTab.reportIncludeImages, true),
         includeOverset: getBool(advancedTab && advancedTab.reportIncludeOverset, true),
-        includeCounts: getBool(advancedTab && advancedTab.reportIncludeCounts, true)
+        includeCounts: getBool(advancedTab && advancedTab.reportIncludeCounts, true),
+        includeFormatting: getBool(advancedTab && advancedTab.reportIncludeFormatting, true),
+        includeLineBreaks: getBool(advancedTab && advancedTab.reportIncludeLineBreaks, true)
     };
 
     return {
@@ -2785,6 +2849,30 @@ function populateTopicsAsTable(tableFrame, topics, opts, lineBreakOptions, style
             }
         } catch (e) {}
     }
+
+    // Apply table paragraph style if specified
+    if (stylesOptions && stylesOptions.table && stylesOptions.table.tablePara) {
+        try {
+            var doc = app.activeDocument;
+            var pStyle = doc.paragraphStyles.itemByName(stylesOptions.table.tablePara);
+            if (pStyle && pStyle.isValid) {
+                for (var ri = startRowIndex; ri < tbl.rows.length; ri++) {
+                    for (var ci = 0; ci < tbl.columns.length; ci++) {
+                        tbl.rows[ri].cells[ci].paragraphs.everyItem().appliedParagraphStyle = pStyle;
+                    }
+                }
+            }
+        } catch (e) {}
+    }
+
+    // Apply general table break if enabled
+    if (lineBreakOptions.lineBreaks.tablePara && lineBreakOptions.lineBreaks.tablePara.enabled) {
+        for (var ri = startRowIndex; ri < tbl.rows.length; ri++) {
+            for (var ci = 0; ci < tbl.columns.length; ci++) {
+                applyLineBreaksToCell(tbl.rows[ri].cells[ci], lineBreakOptions.lineBreaks.tablePara.character);
+            }
+        }
+    }
 }
 
 function populateTopicsAsIndependentRows(page, topics, opts, lineBreakOptions, stylesOptions) {
@@ -3398,7 +3486,8 @@ function getDefaultSettings() {
         stylesOptions: {
             table: {
                 tableStyle: '',
-                cellStyle: ''
+                cellStyle: '',
+                tablePara: ''
             },
             session: {
                 titlePara: '',
@@ -3421,7 +3510,8 @@ function getDefaultSettings() {
             Chairpersons: { enabled: false, character: '|' },
             topicTime: { enabled: false, character: '|' },
             topicTitle: { enabled: false, character: '|' },
-            topicSpeaker: { enabled: false, character: '|' }
+            topicSpeaker: { enabled: false, character: '|' },
+            tablePara: { enabled: false, character: '|' }
         }
     };
 }
@@ -3514,7 +3604,7 @@ function jsonFromString(jsonString) {
 
 /* ---------------- EXPORT REPORT ---------------- */
 
-function exportReport(sessionsData, reportOptions) {
+function exportReport(sessionsData, reportOptions, stylesOptions, lineBreakOptions) {
     // Get a file path from the user with a default name
     var reportFilePath = File.saveDialog("Save Report As", "Text Files:*.txt");
     if (!reportFilePath) {
@@ -3543,6 +3633,8 @@ function exportReport(sessionsData, reportOptions) {
     var includeOverset = reportOptions ? reportOptions.includeOverset : true;
     var includeImages = reportOptions ? reportOptions.includeImages : true;
     var includeCounts = reportOptions ? reportOptions.includeCounts : true;
+    var includeFormatting = reportOptions ? reportOptions.includeFormatting : true;
+    var includeLineBreaks = reportOptions ? reportOptions.includeLineBreaks : true;
     
     // Write the report header
     reportFile.writeln("AGENDA IMPORT REPORT");
@@ -3717,6 +3809,102 @@ function exportReport(sessionsData, reportOptions) {
     reportFile.writeln("\n=========================\n");
     
     } // End of overset text check conditional
+    
+    // Add formatting report if enabled in preferences
+    if (includeFormatting || includeLineBreaks) {
+        reportFile.writeln("*** FORMATTING REPORT ***");
+        reportFile.writeln("========================");
+        
+        if (includeFormatting) {
+            reportFile.writeln("ASSIGNED STYLES:");
+            reportFile.writeln("----------------");
+            
+            // Session styles
+            if (stylesOptions && stylesOptions.session) {
+                reportFile.writeln("Session Title: " + (stylesOptions.session.titlePara || "[None]"));
+                reportFile.writeln("Session Time: " + (stylesOptions.session.timePara || "[None]"));
+                reportFile.writeln("Session Number: " + (stylesOptions.session.noPara || "[None]"));
+            }
+            
+            // Chair style
+            if (stylesOptions && stylesOptions.chair) {
+                reportFile.writeln("Chairpersons: " + (stylesOptions.chair.style || "[None]"));
+            }
+            
+            // Topic styles (independent)
+            if (stylesOptions && stylesOptions.topicsIndependent) {
+                reportFile.writeln("Topic Time: " + (stylesOptions.topicsIndependent.timePara || "[None]"));
+                reportFile.writeln("Topic Title: " + (stylesOptions.topicsIndependent.titlePara || "[None]"));
+                reportFile.writeln("Topic Speaker: " + (stylesOptions.topicsIndependent.speakerPara || "[None]"));
+            }
+            
+            // Table styles
+            if (stylesOptions && stylesOptions.table) {
+                reportFile.writeln("Table Style: " + (stylesOptions.table.tableStyle || "[None]"));
+                reportFile.writeln("Cell Style: " + (stylesOptions.table.cellStyle || "[None]"));
+                reportFile.writeln("Table Paragraph: " + (stylesOptions.table.tablePara || "[None]"));
+            }
+            
+            reportFile.writeln("");
+        }
+        
+        if (includeLineBreaks) {
+            reportFile.writeln("LINE BREAK SETTINGS:");
+            reportFile.writeln("-------------------");
+            
+            if (lineBreakOptions && lineBreakOptions.lineBreaks) {
+                var lineBreaks = lineBreakOptions.lineBreaks;
+                
+                // Session line breaks
+                if (lineBreaks.SessionTitle) {
+                    reportFile.writeln("Session Title: " + (lineBreaks.SessionTitle.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.SessionTitle.character + "'");
+                }
+                
+                if (lineBreaks.SessionTime) {
+                    reportFile.writeln("Session Time: " + (lineBreaks.SessionTime.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.SessionTime.character + "'");
+                }
+                
+                if (lineBreaks.SessionNo) {
+                    reportFile.writeln("Session Number: " + (lineBreaks.SessionNo.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.SessionNo.character + "'");
+                }
+                
+                // Chair line breaks
+                if (lineBreaks.Chairpersons) {
+                    reportFile.writeln("Chairpersons: " + (lineBreaks.Chairpersons.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.Chairpersons.character + "'");
+                }
+                
+                // Topic line breaks
+                if (lineBreaks.topicTime) {
+                    reportFile.writeln("Topic Time: " + (lineBreaks.topicTime.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.topicTime.character + "'");
+                }
+                
+                if (lineBreaks.topicTitle) {
+                    reportFile.writeln("Topic Title: " + (lineBreaks.topicTitle.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.topicTitle.character + "'");
+                }
+                
+                if (lineBreaks.topicSpeaker) {
+                    reportFile.writeln("Topic Speaker: " + (lineBreaks.topicSpeaker.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.topicSpeaker.character + "'");
+                }
+                
+                // Table paragraph line breaks
+                if (lineBreaks.tablePara) {
+                    reportFile.writeln("Table Paragraph: " + (lineBreaks.tablePara.enabled ? "Enabled" : "Disabled") + 
+                                      " | Character: '" + lineBreaks.tablePara.character + "'");
+                }
+            }
+            
+            reportFile.writeln("");
+        }
+        
+        reportFile.writeln("========================\n");
+    }
     
     // Add image placement report if automation was used and if enabled in preferences
     if (includeImages && imageResults.enabled) {
@@ -4004,9 +4192,56 @@ function setupStylesTab(tab, defaultSettings, hasIndependentLayout, hasTableLayo
 function updateStylesTabFromSettings(tab, stylesOptions, hasIndependentLayout, hasTableLayout, availableFields) {
     if (!tab || !stylesOptions) return;
     try {
+        // Create styles that don't exist in the current document
+        if (stylesOptions.table) {
+            if (stylesOptions.table.tableStyle && stylesOptions.table.tableStyle !== '— None —') {
+                createTableStyleIfMissing(stylesOptions.table.tableStyle, {});
+            }
+            if (stylesOptions.table.cellStyle && stylesOptions.table.cellStyle !== '— None —') {
+                createCellStyleIfMissing(stylesOptions.table.cellStyle, {});
+            }
+            if (stylesOptions.table.tablePara && stylesOptions.table.tablePara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.table.tablePara, {});
+            }
+        }
+        if (stylesOptions.session) {
+            if (stylesOptions.session.titlePara && stylesOptions.session.titlePara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.session.titlePara, {});
+            }
+            if (stylesOptions.session.timePara && stylesOptions.session.timePara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.session.timePara, {});
+            }
+            if (stylesOptions.session.noPara && stylesOptions.session.noPara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.session.noPara, {});
+            }
+        }
+        if (stylesOptions.chair) {
+            if (stylesOptions.chair.style && stylesOptions.chair.style !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.chair.style, {});
+            }
+        }
+        if (stylesOptions.topicsIndependent) {
+            if (stylesOptions.topicsIndependent.timePara && stylesOptions.topicsIndependent.timePara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.topicsIndependent.timePara, {});
+            }
+            if (stylesOptions.topicsIndependent.titlePara && stylesOptions.topicsIndependent.titlePara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.topicsIndependent.titlePara, {});
+            }
+            if (stylesOptions.topicsIndependent.speakerPara && stylesOptions.topicsIndependent.speakerPara !== '— None —') {
+                createParagraphStyleIfMissing(stylesOptions.topicsIndependent.speakerPara, {});
+            }
+        }
+        
+        // Refresh dropdowns to include newly created styles
+        if (tab && typeof tab.refreshStyleDropdowns === 'function') {
+            tab.refreshStyleDropdowns();
+        }
+        
+        // Now select the styles in dropdowns
         if (stylesOptions.table) {
             selectDropdownByText(tab.ddTableStyle, stylesOptions.table.tableStyle);
             selectDropdownByText(tab.ddCellStyle, stylesOptions.table.cellStyle);
+            selectDropdownByText(tab.ddTablePara, stylesOptions.table.tablePara);
         }
         if (stylesOptions.session) {
             selectDropdownByText(tab.ddSessionTitle, stylesOptions.session.titlePara);
@@ -4031,6 +4266,7 @@ function updateStylesTabFromSettings(tab, stylesOptions, hasIndependentLayout, h
             var enableTbl = !!hasTableLayout;
             tab.ddTableStyle.enabled = enableTbl;
             tab.ddCellStyle.enabled = enableTbl;
+            tab.ddTablePara.enabled = enableTbl;
         }
         if (availableFields) {
             if (tab.ddSessionTitle) tab.ddSessionTitle.enabled = !!availableFields['Session Title'];

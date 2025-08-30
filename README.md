@@ -2,6 +2,7 @@
 # Created by noorr @2025
 
 **Professional InDesign Script for Automated Conference Agenda Generation**
+
 ![quickgenda](https://github.com/user-attachments/assets/514be2e0-8c67-4a7b-b735-9117122d3e7f)
 
 Transform your CSV data into beautifully formatted InDesign agendas with intelligent layout management, automated image placement, and comprehensive error reporting.

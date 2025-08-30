@@ -222,7 +222,7 @@ QuickGenda generates comprehensive reports including:
 
 ## 🔄 Version History
 
-### v2.0 (August 22, 2025)
+### v2.0 (August 30, 2025)
 - **Enhanced Styling System:** Apply paragraph, table, and cell styles directly from the configuration panel
 - **Style Auto-Detection:** Automatically detect and pre-select styles from template documents
 - **Inline Style Creation:** Create new styles without leaving the configuration panel

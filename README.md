@@ -244,11 +244,3 @@ QuickGenda generates comprehensive reports including:
 **Script Version:** 2.0  
 **Release Date:** August 22, 2025  
 **Compatibility:** InDesign CS6+
-
----
-
-<<<<<<< HEAD
-**QuickGenda** - Transform your conference planning workflow with intelligent automation.
-=======
-**SmartAgenda Creator** - Transform your conference planning workflow with intelligent automation.
->>>>>>> 9b0da5432bd44a3b1b12b0e91a8b65ad2ae4f54d
